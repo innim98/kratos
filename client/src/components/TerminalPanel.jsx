@@ -1,14 +1,23 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { getToken } from '../lib/api.js';
 
-export default function TerminalPanel({ agentId }) {
+const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const containerRef = useRef(null);
   const termRef = useRef(null);
   const wsRef = useRef(null);
   const fitRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    sendInput(text) {
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'input', data: text }));
+      }
+    },
+  }));
 
   useEffect(() => {
     if (!containerRef.current || !agentId) return;
@@ -38,7 +47,6 @@ export default function TerminalPanel({ agentId }) {
     termRef.current = term;
     fitRef.current = fit;
 
-    // WebSocket connection
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = getToken();
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws/terminal?token=${encodeURIComponent(token)}`);
@@ -68,14 +76,12 @@ export default function TerminalPanel({ agentId }) {
       term.write('\r\n\x1b[90m[Disconnected]\x1b[0m\r\n');
     };
 
-    // Terminal input → WS
     term.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'input', data }));
       }
     });
 
-    // Resize handling
     const handleResize = () => {
       fit.fit();
       if (ws.readyState === WebSocket.OPEN) {
@@ -104,4 +110,6 @@ export default function TerminalPanel({ agentId }) {
       style={{ background: '#0a0a0a' }}
     />
   );
-}
+});
+
+export default TerminalPanel;

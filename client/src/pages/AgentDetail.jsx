@@ -1,17 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/api.js';
 import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import TerminalPanel from '../components/TerminalPanel.jsx';
 import WebviewPanel from '../components/WebviewPanel.jsx';
 import SplitView from '../components/SplitView.jsx';
-import { Columns2, Rows2, Square, Monitor, Terminal } from 'lucide-react';
+import { Columns2, Rows2, Square, Monitor, Terminal, BookOpen } from 'lucide-react';
 
 const SPLIT_MODES = [
   { key: 'horizontal', icon: Columns2, label: 'Side by side' },
   { key: 'vertical', icon: Rows2, label: 'Top and bottom' },
   { key: 'terminal-only', icon: Square, label: 'Terminal only' },
 ];
+
+function buildApiGuide(agentId, serverPort) {
+  return `cat << 'KRATOS_API_GUIDE'
+
+=== Kratos Webview API (Agent #${agentId}) ===
+Server: http://localhost:${serverPort}
+
+# Register webview (call after starting your dev server)
+curl -X POST http://localhost:${serverPort}/api/agents/${agentId}/webview \\
+  -H "Content-Type: application/json" \\
+  -d '{"port": <YOUR_PORT>, "path": "/"}'
+
+# Unregister webview
+curl -X DELETE http://localhost:${serverPort}/api/agents/${agentId}/webview
+
+# Read page text content
+curl -s http://localhost:${serverPort}/api/agents/${agentId}/webview/dom | jq '.text'
+
+# Read full DOM (title, url, text, html)
+curl -s http://localhost:${serverPort}/api/agents/${agentId}/webview/dom
+
+# Take screenshot (base64 PNG)
+curl -s http://localhost:${serverPort}/api/agents/${agentId}/webview/screenshot \\
+  | jq -r '.base64' | base64 -d > /tmp/screenshot.png
+
+KRATOS_API_GUIDE
+`;
+}
 
 export default function AgentDetail({ agentId }) {
   const [agent, setAgent] = useState(null);
@@ -20,6 +48,7 @@ export default function AgentDetail({ agentId }) {
   );
   const [mobileTab, setMobileTab] = useState('terminal');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const termRef = useRef(null);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -37,10 +66,13 @@ export default function AgentDetail({ agentId }) {
     });
   }, [agentId]);
 
-  // Listen for webview updates via the terminal WS (already connected)
-  // Agent data is refreshed on mount; webview-update will be handled when we integrate WS events
+  const handleSendGuide = () => {
+    const serverPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+    const guide = buildApiGuide(agentId, serverPort);
+    termRef.current?.sendInput(guide);
+  };
 
-  const terminalEl = <TerminalPanel agentId={agentId} />;
+  const terminalEl = <TerminalPanel ref={termRef} agentId={agentId} />;
   const webviewEl = <WebviewPanel webview={agent?.webview} agentId={agentId} />;
 
   // Mobile: tab view
@@ -60,6 +92,10 @@ export default function AgentDetail({ agentId }) {
           >
             <Monitor className="h-4 w-4" /> Webview
           </button>
+          <span className="flex-1" />
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleSendGuide} title="Send API guide to terminal">
+            <BookOpen className="h-3.5 w-3.5 mr-1" /> API Guide
+          </Button>
         </div>
         <div className="flex-1 min-h-0">
           {mobileTab === 'terminal' ? terminalEl : webviewEl}
@@ -81,7 +117,11 @@ export default function AgentDetail({ agentId }) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleSendGuide} title="Send API guide to terminal">
+            <BookOpen className="h-3.5 w-3.5 mr-1" /> API Guide
+          </Button>
+          <div className="w-px h-4 bg-border mx-1" />
           {SPLIT_MODES.map(({ key, icon: Icon, label }) => (
             <Button
               key={key}
