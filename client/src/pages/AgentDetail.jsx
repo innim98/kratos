@@ -5,7 +5,8 @@ import { cn } from '../lib/utils.js';
 import TerminalPanel from '../components/TerminalPanel.jsx';
 import WebviewPanel from '../components/WebviewPanel.jsx';
 import SplitView from '../components/SplitView.jsx';
-import { Columns2, Rows2, Square, Monitor, Terminal, BookOpen } from 'lucide-react';
+import { Columns2, Rows2, Square, Monitor, Terminal, BookOpen, Upload } from 'lucide-react';
+import { getToken } from '../lib/api.js';
 
 const SPLIT_MODES = [
   { key: 'horizontal', icon: Columns2, label: 'Side by side' },
@@ -74,10 +75,39 @@ export default function AgentDetail({ agentId }) {
     });
   }, []);
 
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
   const handleSendGuide = () => {
     const port = serverPort || '15001';
     const guide = buildApiGuide(agentId, port);
     termRef.current?.sendInput(guide);
+  };
+
+  const handleUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/agents/${agentId}/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        termRef.current?.sendInput(`echo "[Kratos] ${data.files.length} file(s) uploaded to ${data.uploadDir}"\n`);
+      }
+    } catch {}
+    setUploading(false);
+    e.target.value = '';
   };
 
   const terminalEl = <TerminalPanel ref={termRef} agentId={agentId} />;
@@ -101,6 +131,10 @@ export default function AgentDetail({ agentId }) {
             <Monitor className="h-4 w-4" /> Webview
           </button>
           <span className="flex-1" />
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUpload} />
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Upload files to agent">
+            <Upload className="h-3.5 w-3.5 mr-1" /> {uploading ? 'Uploading...' : 'Upload'}
+          </Button>
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleSendGuide} title="Send API guide to terminal">
             <BookOpen className="h-3.5 w-3.5 mr-1" /> API Guide
           </Button>
@@ -126,6 +160,10 @@ export default function AgentDetail({ agentId }) {
           )}
         </div>
         <div className="flex items-center gap-1">
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUpload} />
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Upload files to agent">
+            <Upload className="h-3.5 w-3.5 mr-1" /> {uploading ? '...' : 'Upload'}
+          </Button>
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleSendGuide} title="Send API guide to terminal">
             <BookOpen className="h-3.5 w-3.5 mr-1" /> API Guide
           </Button>

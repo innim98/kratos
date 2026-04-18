@@ -2,6 +2,7 @@ import fs from 'fs';
 import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyWebsocket from '@fastify/websocket';
+import fastifyMultipart from '@fastify/multipart';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createDb } from './lib/db.js';
@@ -26,6 +27,7 @@ import webviewRoutes from './routes/webview.js';
 import webviewProxyRoutes from './routes/webview-proxy.js';
 import webviewSharedRoutes from './routes/webview-shared.js';
 import webviewInspectRoutes from './routes/webview-inspect.js';
+import uploadRoutes from './routes/upload.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -66,6 +68,7 @@ export async function buildServer(opts = {}) {
   });
 
   await app.register(fastifyWebsocket);
+  await app.register(fastifyMultipart);
   await app.register(authRoutes);
   await app.register(userRoutes);
   await app.register(agentRoutes);
@@ -75,6 +78,7 @@ export async function buildServer(opts = {}) {
   await app.register(webviewProxyRoutes);
   await app.register(webviewSharedRoutes);
   await app.register(webviewInspectRoutes);
+  await app.register(uploadRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };
