@@ -77,7 +77,7 @@ export async function buildServer(opts = {}) {
   await app.register(webviewInspectRoutes);
 
   app.get('/api/config', async () => {
-    return { auth: useAuth };
+    return { auth: useAuth, serverPort: port };
   });
 
   app.get('/api/status', async () => {

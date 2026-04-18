@@ -66,9 +66,17 @@ export default function AgentDetail({ agentId }) {
     });
   }, [agentId]);
 
+  const [serverPort, setServerPort] = useState(null);
+
+  useEffect(() => {
+    apiFetch('/api/config').then(r => r.json()).then(data => {
+      if (data.serverPort) setServerPort(data.serverPort);
+    });
+  }, []);
+
   const handleSendGuide = () => {
-    const serverPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
-    const guide = buildApiGuide(agentId, serverPort);
+    const port = serverPort || '15001';
+    const guide = buildApiGuide(agentId, port);
     termRef.current?.sendInput(guide);
   };
 
