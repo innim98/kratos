@@ -1,25 +1,22 @@
 import { useState, useEffect } from 'react';
 import { cn } from '../lib/utils.js';
 import { getToken, apiFetch } from '../lib/api.js';
-import SharedScreenView from './SharedScreenView.jsx';
-import { Monitor, ScreenShare, RefreshCw } from 'lucide-react';
+import { Monitor, ScreenShare, RefreshCw, ExternalLink } from 'lucide-react';
 
 export default function WebviewPanel({ webview, agentId }) {
-  const [mode, setMode] = useState('local');
   const [iframeKey, setIframeKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [backendPort, setBackendPort] = useState(null);
-
-  useEffect(() => {
-    apiFetch('/api/config').then(r => r.json()).then(d => {
-      if (d.serverPort) setBackendPort(d.serverPort);
-    });
-  }, []);
 
   const handleRefresh = () => {
     setSpinning(true);
     setIframeKey(k => k + 1);
     setTimeout(() => setSpinning(false), 600);
+  };
+
+  const handleSharedScreen = () => {
+    const token = getToken();
+    const url = `/shared/${agentId}?token=${encodeURIComponent(token)}`;
+    window.open(url, `kratos-shared-${agentId}`, 'noopener');
   };
 
   if (!webview) {
@@ -31,30 +28,21 @@ export default function WebviewPanel({ webview, agentId }) {
     );
   }
 
-  // Point iframe directly to the agent's local dev server
-  // The webview port is the agent's actual server — connect directly for full Vite HMR support
   const proxyUrl = `http://${window.location.hostname}:${webview.port}${webview.path}`;
 
   return (
     <div className="h-full w-full flex flex-col">
       <div className="flex items-center gap-1 px-2 py-1 border-b border-border bg-card/50 shrink-0">
-        <button
-          onClick={() => setMode('local')}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs',
-            mode === 'local' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
+        <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-accent-foreground">
           <Monitor className="h-3.5 w-3.5" /> Local
-        </button>
+        </div>
         <button
-          onClick={() => setMode('shared')}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs',
-            mode === 'shared' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
-          )}
+          onClick={handleSharedScreen}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50"
+          title="Open Shared Screen in new tab"
         >
           <ScreenShare className="h-3.5 w-3.5" /> Shared Screen
+          <ExternalLink className="h-3 w-3" />
         </button>
         <span className="flex-1" />
         <button
@@ -70,17 +58,13 @@ export default function WebviewPanel({ webview, agentId }) {
       </div>
 
       <div className="flex-1 min-h-0">
-        {mode === 'local' ? (
-          <iframe
-            key={iframeKey}
-            src={proxyUrl}
-            className="w-full h-full border-0 bg-white"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            title="Agent Webview (Local)"
-          />
-        ) : (
-          <SharedScreenView key={`shared-${iframeKey}`} agentId={agentId} />
-        )}
+        <iframe
+          key={iframeKey}
+          src={proxyUrl}
+          className="w-full h-full border-0 bg-white"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          title="Agent Webview (Local)"
+        />
       </div>
     </div>
   );

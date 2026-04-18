@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
       port: clientPort,
       proxy: {
         '/api': `http://localhost:${serverPort}`,
+        '/shared': `http://localhost:${serverPort}`,
         '/ws': {
           target: `ws://localhost:${serverPort}`,
           ws: true,

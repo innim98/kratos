@@ -1,6 +1,9 @@
 import { getWebview } from './webview.js';
 import { getOrCreateSession, destroySession } from '../lib/shared-screen.js';
 
+// Per-agent event buffer stored server-side (not in Puppeteer page)
+const agentEvents = new Map();
+
 export default async function webviewSharedRoutes(app) {
   app.get('/ws/agents/:id/shared', { websocket: true, preHandler: async (request, reply) => {
     const token = request.query.token;
@@ -31,51 +34,17 @@ export default async function webviewSharedRoutes(app) {
 
     session.clients.add(socket);
 
-    // Send existing events (snapshot + mutations so far)
-    try {
-      const events = await session.page.evaluate('window.__kratos_events || []');
-      if (events.length > 0) {
-        socket.send(JSON.stringify({ type: 'rrweb-events', data: events }));
-      }
-    } catch {
-      // page might be navigating
+    // Initialize server-side event buffer if needed + start polling from Puppeteer
+    if (!agentEvents.has(agentId)) {
+      agentEvents.set(agentId, []);
+      startPolling(agentId, session);
     }
 
-    // Listen for new events from rrweb
-    const eventListener = async (event) => {
-      if (socket.readyState === 1) {
-        socket.send(JSON.stringify({ type: 'rrweb-event', data: event }));
-      }
-    };
-
-    try {
-      await session.page.evaluate(`
-        // unused listener.push((event) => {
-          // Events are buffered and polled by the server
-        });
-      `);
-    } catch {
-      // ignore
+    // Send ALL existing events to new client (includes full snapshot)
+    const events = agentEvents.get(agentId);
+    if (events.length > 0) {
+      socket.send(JSON.stringify({ type: 'rrweb-events', data: events }));
     }
-
-    // Poll for new events (simpler than CDP for cross-browser compat)
-    const pollInterval = setInterval(async () => {
-      if (socket.readyState !== 1) {
-        clearInterval(pollInterval);
-        return;
-      }
-      try {
-        const newEvents = await session.page.evaluate(`
-          const events = window.__kratos_events.splice(0);
-          events;
-        `);
-        for (const event of newEvents) {
-          socket.send(JSON.stringify({ type: 'rrweb-event', data: event }));
-        }
-      } catch {
-        // page might have been closed
-      }
-    }, 100);
 
     // Handle input from client
     socket.on('message', async (raw) => {
@@ -101,18 +70,61 @@ export default async function webviewSharedRoutes(app) {
     });
 
     socket.on('close', () => {
-      clearInterval(pollInterval);
       session.clients.delete(socket);
 
-      // Destroy session when no clients remain
       if (session.clients.size === 0) {
         setTimeout(() => {
-          const current = getOrCreateSession.sessions?.get(agentId);
-          if (current && current.clients.size === 0) {
+          if (session.clients.size === 0) {
+            stopPolling(agentId);
+            agentEvents.delete(agentId);
             destroySession(agentId);
           }
-        }, 30000); // 30s grace period
+        }, 30000);
       }
     });
   });
+}
+
+// Poll Puppeteer for new rrweb events, store in server buffer, broadcast to all clients
+const pollers = new Map();
+
+function startPolling(agentId, session) {
+  if (pollers.has(agentId)) return;
+
+  const interval = setInterval(async () => {
+    try {
+      const newEvents = await session.page.evaluate(`
+        var e = window.__kratos_events.splice(0);
+        e;
+      `);
+      if (newEvents.length === 0) return;
+
+      const events = agentEvents.get(agentId);
+      if (!events) return;
+
+      for (const event of newEvents) {
+        events.push(event);
+
+        // Broadcast to all connected clients
+        const msg = JSON.stringify({ type: 'rrweb-event', data: event });
+        for (const client of session.clients) {
+          if (client.readyState === 1) {
+            client.send(msg);
+          }
+        }
+      }
+    } catch {
+      // page might have been closed
+    }
+  }, 100);
+
+  pollers.set(agentId, interval);
+}
+
+function stopPolling(agentId) {
+  const interval = pollers.get(agentId);
+  if (interval) {
+    clearInterval(interval);
+    pollers.delete(agentId);
+  }
 }

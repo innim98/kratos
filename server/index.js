@@ -27,6 +27,7 @@ import webviewRoutes from './routes/webview.js';
 import webviewProxyRoutes from './routes/webview-proxy.js';
 import webviewSharedRoutes from './routes/webview-shared.js';
 import webviewInspectRoutes from './routes/webview-inspect.js';
+import sharedPageRoutes from './routes/shared-page.js';
 import uploadRoutes from './routes/upload.js';
 
 function getArg(flags) {
@@ -78,6 +79,7 @@ export async function buildServer(opts = {}) {
   await app.register(webviewProxyRoutes);
   await app.register(webviewSharedRoutes);
   await app.register(webviewInspectRoutes);
+  await app.register(sharedPageRoutes);
   await app.register(uploadRoutes);
 
   app.get('/api/config', async () => {
