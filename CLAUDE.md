@@ -49,6 +49,14 @@ Three states with contextual sidebar:
 
 Mobile (<768px): Full-screen transitions with back buttons instead of sidebar.
 
+### Webview Inspect API (for agents)
+
+Agents can read back what their webview looks like — localhost-only, no JWT:
+- `GET /api/agents/:id/webview/screenshot` → `{ format, base64, width, height }` (PNG)
+- `GET /api/agents/:id/webview/dom` → `{ title, url, text, html }`
+
+Both use a shared Puppeteer instance. Screenshot returns base64 PNG readable as vision input. DOM returns innerText + innerHTML (50KB max).
+
 ## Key Design Decisions
 
 - Agent metadata in SQLite, live status from `tmux list-sessions` — merged at query time
@@ -61,13 +69,15 @@ Mobile (<768px): Full-screen transitions with back buttons instead of sidebar.
 
 ```bash
 # Server
-cd server && npm install && node index.js --port 17000 --auth
+cd server && npm install && node index.js --auth
 
 # Client (dev)
 cd client && npm install && npm run dev
 
-# Environment
-JWT_SECRET=<key>  # Required when --auth flag is used
+# Tests (57 tests)
+cd server && npm test
+
+# Ports configured in .env: PORT=15001, CLIENT_PORT=15000
 ```
 
 ## Full Requirements

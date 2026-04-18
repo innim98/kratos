@@ -25,6 +25,7 @@ import wsRoutes from './routes/ws.js';
 import webviewRoutes from './routes/webview.js';
 import webviewProxyRoutes from './routes/webview-proxy.js';
 import webviewSharedRoutes from './routes/webview-shared.js';
+import webviewInspectRoutes from './routes/webview-inspect.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -73,6 +74,7 @@ export async function buildServer(opts = {}) {
   await app.register(webviewRoutes);
   await app.register(webviewProxyRoutes);
   await app.register(webviewSharedRoutes);
+  await app.register(webviewInspectRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth };
