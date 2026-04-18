@@ -23,6 +23,10 @@ export default async function webviewProxyRoutes(app) {
   };
 
   app.get('/api/agents/:id/webview/proxy/*', { preHandler: authenticate }, async (request, reply) => {
+    return proxyToAgent(request, reply);
+  });
+
+  async function proxyToAgent(request, reply) {
     const { id } = request.params;
     const webview = getWebview(Number(id));
 
@@ -31,8 +35,11 @@ export default async function webviewProxyRoutes(app) {
     }
 
     const proxyPath = request.params['*'] || '';
-    const qs = request.url.includes('?') ? '?' + request.url.split('?').slice(1).join('?').replace(/(?:^|&)token=[^&]*/g, '').replace(/^&/, '') : '';
-    const targetUrl = `http://localhost:${webview.port}${webview.path}${proxyPath}${qs && qs !== '?' ? qs : ''}`;
+    // Strip token from query string before forwarding
+    const rawQs = request.url.split('?').slice(1).join('?');
+    const cleanQs = rawQs ? rawQs.replace(/(?:^|&)token=[^&]*/g, '').replace(/^&/, '') : '';
+    const qs = cleanQs ? `?${cleanQs}` : '';
+    const targetUrl = `http://localhost:${webview.port}/${proxyPath}${qs}`;
 
     try {
       const proxyRes = await new Promise((resolve, reject) => {
@@ -41,15 +48,39 @@ export default async function webviewProxyRoutes(app) {
       });
 
       reply.code(proxyRes.statusCode);
+      const contentType = proxyRes.headers['content-type'] || '';
       for (const [key, value] of Object.entries(proxyRes.headers)) {
         if (key.toLowerCase() !== 'transfer-encoding') {
           reply.header(key, value);
         }
       }
 
+      // For HTML responses, rewrite absolute paths to go through proxy
+      if (contentType.includes('text/html')) {
+        const chunks = [];
+        for await (const chunk of proxyRes) chunks.push(chunk);
+        let html = Buffer.concat(chunks).toString('utf8');
+
+        const token = request.query.token || '';
+        const proxyBase = `/api/agents/${id}/webview/proxy`;
+
+        // Rewrite absolute src/href paths to go through proxy
+        // e.g. src="/src/main.tsx" → src="/api/agents/1/webview/proxy/src/main.tsx?token=..."
+        html = html.replace(
+          /(src|href|action)=(["'])\/((?!\/|api\/agents)[^"']*)(["'])/g,
+          (match, attr, q1, path, q2) => {
+            const sep = path.includes('?') ? '&' : '?';
+            return `${attr}=${q1}${proxyBase}/${path}${sep}token=${encodeURIComponent(token)}${q2}`;
+          }
+        );
+
+        reply.header('content-length', Buffer.byteLength(html));
+        return reply.send(html);
+      }
+
       return reply.send(proxyRes);
     } catch {
       return reply.code(502).send({ error: 'Failed to reach target server' });
     }
-  });
+  }
 }

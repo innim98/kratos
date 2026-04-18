@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '../lib/utils.js';
-import { getToken } from '../lib/api.js';
+import { getToken, apiFetch } from '../lib/api.js';
 import SharedScreenView from './SharedScreenView.jsx';
 import { Monitor, ScreenShare, RefreshCw } from 'lucide-react';
 
@@ -8,6 +8,13 @@ export default function WebviewPanel({ webview, agentId }) {
   const [mode, setMode] = useState('local');
   const [iframeKey, setIframeKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [backendPort, setBackendPort] = useState(null);
+
+  useEffect(() => {
+    apiFetch('/api/config').then(r => r.json()).then(d => {
+      if (d.serverPort) setBackendPort(d.serverPort);
+    });
+  }, []);
 
   const handleRefresh = () => {
     setSpinning(true);
@@ -24,7 +31,9 @@ export default function WebviewPanel({ webview, agentId }) {
     );
   }
 
-  const proxyUrl = `/api/agents/${agentId}/webview/proxy/?token=${encodeURIComponent(getToken())}`;
+  // Point iframe directly to the agent's local dev server
+  // The webview port is the agent's actual server — connect directly for full Vite HMR support
+  const proxyUrl = `http://${window.location.hostname}:${webview.port}${webview.path}`;
 
   return (
     <div className="h-full w-full flex flex-col">
