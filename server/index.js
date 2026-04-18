@@ -23,6 +23,7 @@ import agentRoutes from './routes/agents.js';
 import folderRoutes from './routes/folders.js';
 import wsRoutes from './routes/ws.js';
 import webviewRoutes from './routes/webview.js';
+import webviewProxyRoutes from './routes/webview-proxy.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -69,6 +70,7 @@ export async function buildServer(opts = {}) {
   await app.register(folderRoutes);
   await app.register(wsRoutes);
   await app.register(webviewRoutes);
+  await app.register(webviewProxyRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth };
