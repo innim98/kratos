@@ -9,6 +9,15 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    optimizeDeps: {
+      include: [
+        'react', 'react-dom', 'react/jsx-runtime',
+        '@xterm/xterm', '@xterm/addon-fit',
+        'lucide-react',
+        '@radix-ui/react-dialog', '@radix-ui/react-slot',
+        'class-variance-authority', 'clsx', 'tailwind-merge',
+      ],
+    },
     server: {
       port: clientPort,
       proxy: {

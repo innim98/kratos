@@ -8,7 +8,8 @@
     "start": "node index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper 2>/dev/null || true"
   },
   "dependencies": {
     "@fastify/jwt": "^9.0.0",
@@ -16,7 +17,7 @@
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.7.0",
     "fastify": "^5.0.0",
-    "node-pty": "^1.0.0"
+    "node-pty": "^1.1.0"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

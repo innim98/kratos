@@ -1,6 +1,7 @@
 import fs from 'fs';
 import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
+import fastifyWebsocket from '@fastify/websocket';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createDb } from './lib/db.js';
@@ -20,6 +21,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import agentRoutes from './routes/agents.js';
 import folderRoutes from './routes/folders.js';
+import wsRoutes from './routes/ws.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -59,10 +61,12 @@ export async function buildServer(opts = {}) {
     db.close();
   });
 
+  await app.register(fastifyWebsocket);
   await app.register(authRoutes);
   await app.register(userRoutes);
   await app.register(agentRoutes);
   await app.register(folderRoutes);
+  await app.register(wsRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth };
