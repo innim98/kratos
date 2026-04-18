@@ -2,13 +2,21 @@ import http from 'http';
 import { getWebview } from './webview.js';
 
 export default async function webviewProxyRoutes(app) {
+  // Accept JWT from Authorization header OR ?token= query param (for iframe)
   const authenticate = async (request, reply) => {
+    let token;
     const authHeader = request.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    } else if (request.query.token) {
+      token = request.query.token;
+    }
+
+    if (!token) {
       return reply.code(401).send({ error: 'Unauthorized' });
     }
     try {
-      request.user = app.jwt.verify(authHeader.slice(7));
+      request.user = app.jwt.verify(token);
     } catch {
       return reply.code(401).send({ error: 'Unauthorized' });
     }
@@ -23,7 +31,8 @@ export default async function webviewProxyRoutes(app) {
     }
 
     const proxyPath = request.params['*'] || '';
-    const targetUrl = `http://localhost:${webview.port}${webview.path}${proxyPath}`;
+    const qs = request.url.includes('?') ? '?' + request.url.split('?').slice(1).join('?').replace(/(?:^|&)token=[^&]*/g, '').replace(/^&/, '') : '';
+    const targetUrl = `http://localhost:${webview.port}${webview.path}${proxyPath}${qs && qs !== '?' ? qs : ''}`;
 
     try {
       const proxyRes = await new Promise((resolve, reject) => {

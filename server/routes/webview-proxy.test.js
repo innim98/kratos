@@ -71,6 +71,24 @@ describe('webview proxy', () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it('should accept token via query param (for iframe)', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/agents/${agentId}/webview/proxy/?token=${token}`,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toContain('Hello from target');
+  });
+
+  it('should not forward token param to target', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/agents/${agentId}/webview/proxy/?token=${token}`,
+    });
+    // target echoes req.url — should not contain token
+    expect(res.payload).not.toContain(token);
+  });
+
   it('should return 404 when no webview registered', async () => {
     // Create agent without webview
     const agent2 = await app.inject({

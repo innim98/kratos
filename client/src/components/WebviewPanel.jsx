@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { cn } from '../lib/utils.js';
+import { getToken } from '../lib/api.js';
 import SharedScreenView from './SharedScreenView.jsx';
-import { Monitor, ScreenShare } from 'lucide-react';
+import { Monitor, ScreenShare, RefreshCw } from 'lucide-react';
 
 export default function WebviewPanel({ webview, agentId }) {
   const [mode, setMode] = useState('local');
+  const [iframeKey, setIframeKey] = useState(0);
+  const [spinning, setSpinning] = useState(false);
+
+  const handleRefresh = () => {
+    setSpinning(true);
+    setIframeKey(k => k + 1);
+    setTimeout(() => setSpinning(false), 600);
+  };
 
   if (!webview) {
     return (
@@ -15,7 +24,7 @@ export default function WebviewPanel({ webview, agentId }) {
     );
   }
 
-  const proxyUrl = `/api/agents/${agentId}/webview/proxy/`;
+  const proxyUrl = `/api/agents/${agentId}/webview/proxy/?token=${encodeURIComponent(getToken())}`;
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -39,7 +48,14 @@ export default function WebviewPanel({ webview, agentId }) {
           <ScreenShare className="h-3.5 w-3.5" /> Shared Screen
         </button>
         <span className="flex-1" />
-        <span className="text-[10px] text-muted-foreground font-mono">
+        <button
+          onClick={handleRefresh}
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+          title="Refresh"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', spinning && 'animate-spin')} />
+        </button>
+        <span className="text-[10px] text-muted-foreground font-mono ml-1">
           :{webview.port}{webview.path}
         </span>
       </div>
@@ -47,13 +63,14 @@ export default function WebviewPanel({ webview, agentId }) {
       <div className="flex-1 min-h-0">
         {mode === 'local' ? (
           <iframe
+            key={iframeKey}
             src={proxyUrl}
             className="w-full h-full border-0 bg-white"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
             title="Agent Webview (Local)"
           />
         ) : (
-          <SharedScreenView agentId={agentId} />
+          <SharedScreenView key={`shared-${iframeKey}`} agentId={agentId} />
         )}
       </div>
     </div>
