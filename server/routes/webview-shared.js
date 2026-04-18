@@ -33,7 +33,7 @@ export default async function webviewSharedRoutes(app) {
 
     // Send existing events (snapshot + mutations so far)
     try {
-      const events = await session.page.evaluate('window.__rrweb_events || []');
+      const events = await session.page.evaluate('window.__kratos_events || []');
       if (events.length > 0) {
         socket.send(JSON.stringify({ type: 'rrweb-events', data: events }));
       }
@@ -50,7 +50,7 @@ export default async function webviewSharedRoutes(app) {
 
     try {
       await session.page.evaluate(`
-        window.__rrweb_listeners.push((event) => {
+        // unused listener.push((event) => {
           // Events are buffered and polled by the server
         });
       `);
@@ -66,7 +66,7 @@ export default async function webviewSharedRoutes(app) {
       }
       try {
         const newEvents = await session.page.evaluate(`
-          const events = window.__rrweb_events.splice(0);
+          const events = window.__kratos_events.splice(0);
           events;
         `);
         for (const event of newEvents) {
