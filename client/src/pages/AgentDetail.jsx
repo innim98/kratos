@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { apiFetch, getToken } from '../lib/api.js';
+import { apiFetch } from '../lib/api.js';
 import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import TerminalPanel from '../components/TerminalPanel.jsx';
 import WebviewPanel from '../components/WebviewPanel.jsx';
 import SplitView from '../components/SplitView.jsx';
-import { Columns2, Rows2, Square, Monitor, Terminal, BookOpen, Upload } from 'lucide-react';
+import AgentFiles from './AgentFiles.jsx';
+import { Columns2, Rows2, Square, Monitor, Terminal, BookOpen, FolderOpen } from 'lucide-react';
 
 const SPLIT_MODES = [
   { key: 'horizontal', icon: Columns2, label: 'Side by side' },
@@ -46,9 +47,8 @@ export default function AgentDetail({ agentId }) {
   const [mobileTab, setMobileTab] = useState('terminal');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [serverPort, setServerPort] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
   const termRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -60,7 +60,6 @@ export default function AgentDetail({ agentId }) {
     localStorage.setItem('kratos_split_mode', splitMode);
   }, [splitMode]);
 
-  // Load agent data
   const loadAgent = useCallback(() => {
     apiFetch('/api/agents').then(r => r.json()).then(data => {
       if (Array.isArray(data)) setAgent(data.find(a => a.id === agentId) || null);
@@ -69,7 +68,6 @@ export default function AgentDetail({ agentId }) {
 
   useEffect(loadAgent, [loadAgent]);
 
-  // Poll for webview updates every 3s (in case WS push is missed)
   useEffect(() => {
     const interval = setInterval(loadAgent, 3000);
     return () => clearInterval(interval);
@@ -85,43 +83,18 @@ export default function AgentDetail({ agentId }) {
     termRef.current?.sendInput(buildApiGuide(agentId, serverPort || '15001'));
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append('files', file);
-    }
-
-    try {
-      const res = await fetch(`/api/agents/${agentId}/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${getToken()}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        termRef.current?.sendInput(`echo "[Kratos] ${data.files.length} file(s) uploaded to ${data.uploadDir}"\n`);
-      }
-    } catch {}
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  // Files view — full viewport replacement
+  if (showFiles) {
+    return <AgentFiles agentId={agentId} onBack={() => setShowFiles(false)} />;
+  }
 
   const terminalEl = <TerminalPanel ref={termRef} agentId={agentId} />;
   const webviewEl = <WebviewPanel webview={agent?.webview} agentId={agentId} />;
 
-  // Toolbar buttons (shared between mobile and desktop)
   const toolbarButtons = (
     <>
-      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleUploadClick} disabled={uploading} title="Upload files to agent">
-        <Upload className="h-3.5 w-3.5 mr-1" /> {uploading ? '...' : 'Upload'}
+      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowFiles(true)} title="Browse agent files">
+        <FolderOpen className="h-3.5 w-3.5 mr-1" /> Files
       </Button>
       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleSendGuide} title="Send API guide to terminal">
         <BookOpen className="h-3.5 w-3.5 mr-1" /> API Guide
@@ -129,11 +102,10 @@ export default function AgentDetail({ agentId }) {
     </>
   );
 
-  // Mobile: tab view
+  // Mobile
   if (isMobile) {
     return (
       <div className="flex flex-col h-full">
-        <input ref={fileInputRef} type="file" multiple onChange={handleFileChange} style={{ display: 'none' }} />
         <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border shrink-0">
           <button
             onClick={() => setMobileTab('terminal')}
@@ -157,10 +129,9 @@ export default function AgentDetail({ agentId }) {
     );
   }
 
-  // Desktop: split view
+  // Desktop
   return (
     <div className="flex flex-col h-full">
-      <input ref={fileInputRef} type="file" multiple onChange={handleFileChange} style={{ display: 'none' }} />
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">{agent?.name || `Agent #${agentId}`}</h2>
