@@ -4,15 +4,21 @@ import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import TerminalPanel from '../components/TerminalPanel.jsx';
 import WebviewPanel from '../components/WebviewPanel.jsx';
+import FilesPanel from '../components/FilesPanel.jsx';
+import TextPanel from '../components/TextPanel.jsx';
+import PanelContent from '../components/PanelContent.jsx';
 import SplitView from '../components/SplitView.jsx';
 import AgentFiles from './AgentFiles.jsx';
-import { Columns2, Rows2, Square, Monitor, Terminal, BookOpen, FolderOpen } from 'lucide-react';
+import { Columns2, Rows2, Square, BookOpen, FolderOpen } from 'lucide-react';
 
 const SPLIT_MODES = [
   { key: 'horizontal', icon: Columns2, label: 'Side by side' },
   { key: 'vertical', icon: Rows2, label: 'Top and bottom' },
-  { key: 'terminal-only', icon: Square, label: 'Terminal only' },
+  { key: 'terminal-only', icon: Square, label: 'Single panel' },
 ];
+
+const LEFT_TABS = ['terminal', 'files', 'text'];
+const RIGHT_TABS = ['webview', 'files', 'text'];
 
 function buildApiGuide(agentId, serverPort) {
   return `cat << 'KRATOS_API_GUIDE'
@@ -20,18 +26,15 @@ function buildApiGuide(agentId, serverPort) {
 === Kratos Webview API (Agent #${agentId}) ===
 Server: http://localhost:${serverPort}
 
-# Register webview (call after starting your dev server)
+# Register webview
 curl -X POST http://localhost:${serverPort}/api/agents/${agentId}/webview \\
   -H "Content-Type: application/json" \\
   -d '{"port": <YOUR_PORT>, "path": "/"}'
 
-# Unregister webview
-curl -X DELETE http://localhost:${serverPort}/api/agents/${agentId}/webview
-
-# Read page text content
+# Read page text
 curl -s http://localhost:${serverPort}/api/agents/${agentId}/webview/dom | jq '.text'
 
-# Take screenshot (base64 PNG)
+# Screenshot
 curl -s http://localhost:${serverPort}/api/agents/${agentId}/webview/screenshot \\
   | jq -r '.base64' | base64 -d > /tmp/screenshot.png
 
@@ -39,15 +42,25 @@ KRATOS_API_GUIDE
 `;
 }
 
+function renderPanelContent(tab, agentId, termRef, agent) {
+  if (tab === 'terminal') return <TerminalPanel ref={termRef} agentId={agentId} />;
+  if (tab === 'files') return <FilesPanel agentId={agentId} />;
+  if (tab === 'text') return <TextPanel agentId={agentId} />;
+  if (tab === 'webview') return <WebviewPanel webview={agent?.webview} agentId={agentId} />;
+  return null;
+}
+
 export default function AgentDetail({ agentId }) {
   const [agent, setAgent] = useState(null);
   const [splitMode, setSplitMode] = useState(() =>
     localStorage.getItem('kratos_split_mode') || 'horizontal'
   );
+  const [leftTab, setLeftTab] = useState('terminal');
+  const [rightTab, setRightTab] = useState('webview');
   const [mobileTab, setMobileTab] = useState('terminal');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [serverPort, setServerPort] = useState(null);
-  const [showFiles, setShowFiles] = useState(false);
+  const [showFullFiles, setShowFullFiles] = useState(false);
   const termRef = useRef(null);
 
   useEffect(() => {
@@ -56,9 +69,7 @@ export default function AgentDetail({ agentId }) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('kratos_split_mode', splitMode);
-  }, [splitMode]);
+  useEffect(() => { localStorage.setItem('kratos_split_mode', splitMode); }, [splitMode]);
 
   const loadAgent = useCallback(() => {
     apiFetch('/api/agents').then(r => r.json()).then(data => {
@@ -67,15 +78,14 @@ export default function AgentDetail({ agentId }) {
   }, [agentId]);
 
   useEffect(loadAgent, [loadAgent]);
-
   useEffect(() => {
     const interval = setInterval(loadAgent, 3000);
     return () => clearInterval(interval);
   }, [loadAgent]);
 
   useEffect(() => {
-    apiFetch('/api/config').then(r => r.json()).then(data => {
-      if (data.serverPort) setServerPort(data.serverPort);
+    apiFetch('/api/config').then(r => r.json()).then(d => {
+      if (d.serverPort) setServerPort(d.serverPort);
     });
   }, []);
 
@@ -83,53 +93,36 @@ export default function AgentDetail({ agentId }) {
     termRef.current?.sendInput(buildApiGuide(agentId, serverPort || '15001'));
   };
 
-  // Files view — full viewport replacement
-  if (showFiles) {
-    return <AgentFiles agentId={agentId} onBack={() => setShowFiles(false)} />;
+  // Full-screen Files mode
+  if (showFullFiles) {
+    return <AgentFiles agentId={agentId} onBack={() => setShowFullFiles(false)} />;
   }
-
-  const terminalEl = <TerminalPanel ref={termRef} agentId={agentId} />;
-  const webviewEl = <WebviewPanel webview={agent?.webview} agentId={agentId} />;
-
-  const toolbarButtons = (
-    <>
-      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowFiles(true)} title="Browse agent files">
-        <FolderOpen className="h-3.5 w-3.5 mr-1" /> Files
-      </Button>
-      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleSendGuide} title="Send API guide to terminal">
-        <BookOpen className="h-3.5 w-3.5 mr-1" /> API Guide
-      </Button>
-    </>
-  );
 
   // Mobile
   if (isMobile) {
+    const MOBILE_TABS = ['terminal', 'webview', 'files', 'text'];
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border shrink-0">
-          <button
-            onClick={() => setMobileTab('terminal')}
-            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded text-sm', mobileTab === 'terminal' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground')}
-          >
-            <Terminal className="h-4 w-4" /> Terminal
-          </button>
-          <button
-            onClick={() => setMobileTab('webview')}
-            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded text-sm', mobileTab === 'webview' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground')}
-          >
-            <Monitor className="h-4 w-4" /> Webview
-          </button>
-          <span className="flex-1" />
-          {toolbarButtons}
-        </div>
-        <div className="flex-1 min-h-0">
-          {mobileTab === 'terminal' ? terminalEl : webviewEl}
-        </div>
+        <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab}>
+          {renderPanelContent(mobileTab, agentId, termRef, agent)}
+        </PanelContent>
       </div>
     );
   }
 
   // Desktop
+  const leftPanel = (
+    <PanelContent tabs={LEFT_TABS} activeTab={leftTab} onTabChange={setLeftTab}>
+      {renderPanelContent(leftTab, agentId, termRef, agent)}
+    </PanelContent>
+  );
+
+  const rightPanel = (
+    <PanelContent tabs={RIGHT_TABS} activeTab={rightTab} onTabChange={setRightTab}>
+      {renderPanelContent(rightTab, agentId, termRef, agent)}
+    </PanelContent>
+  );
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border shrink-0">
@@ -143,7 +136,12 @@ export default function AgentDetail({ agentId }) {
           )}
         </div>
         <div className="flex items-center gap-1">
-          {toolbarButtons}
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowFullFiles(true)} title="Full-screen file browser">
+            <FolderOpen className="h-3.5 w-3.5 mr-1" /> Files
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleSendGuide} title="Send API guide to terminal">
+            <BookOpen className="h-3.5 w-3.5 mr-1" /> API Guide
+          </Button>
           <div className="w-px h-4 bg-border mx-1" />
           {SPLIT_MODES.map(({ key, icon: Icon, label }) => (
             <Button
@@ -160,7 +158,7 @@ export default function AgentDetail({ agentId }) {
         </div>
       </div>
 
-      <SplitView mode={splitMode} left={terminalEl} right={webviewEl} />
+      <SplitView mode={splitMode} left={leftPanel} right={rightPanel} />
     </div>
   );
 }

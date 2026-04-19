@@ -30,6 +30,7 @@ import webviewInspectRoutes from './routes/webview-inspect.js';
 import sharedPageRoutes from './routes/shared-page.js';
 import uploadRoutes from './routes/upload.js';
 import filesRoutes from './routes/files.js';
+import terminalTextRoutes from './routes/terminal-text.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -83,6 +84,7 @@ export async function buildServer(opts = {}) {
   await app.register(sharedPageRoutes);
   await app.register(uploadRoutes);
   await app.register(filesRoutes);
+  await app.register(terminalTextRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };
