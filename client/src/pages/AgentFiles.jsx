@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { apiFetch, getToken } from '../lib/api.js';
 import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
-import { Folder, File, ChevronRight, ArrowLeft, Upload, Home } from 'lucide-react';
+import { Folder, File, ChevronRight, ArrowLeft, Upload, Home, X } from 'lucide-react';
 
 const CODE_EXTENSIONS = new Set([
   'js', 'jsx', 'ts', 'tsx', 'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift',
@@ -32,7 +32,14 @@ export default function AgentFiles({ agentId, onBack }) {
   const [viewingFile, setViewingFile] = useState(null); // { name, content, path }
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const loadDir = async (relPath) => {
     setLoading(true);
@@ -133,53 +140,65 @@ export default function AgentFiles({ agentId, onBack }) {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* File list */}
-        <div className={cn('border-r border-border overflow-y-auto', viewingFile ? 'w-64 min-w-64' : 'flex-1')}>
-          {currentPath && (
-            <button
-              onClick={handleGoUp}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:bg-accent/50 border-b border-border"
-            >
-              <Folder className="h-4 w-4" /> ..
-            </button>
-          )}
-          {entries.map(entry => (
-            <button
-              key={entry.name}
-              onClick={() => handleNavigate(entry)}
-              className={cn(
-                'flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-accent/50 border-b border-border',
-                viewingFile?.name === entry.name && 'bg-accent text-accent-foreground'
-              )}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                {entry.type === 'directory'
-                  ? <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
-                  : <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                }
-                <span className="truncate">{entry.name}</span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0 ml-2">
-                {entry.type === 'file' && (
-                  <span className="text-[10px] text-muted-foreground">{formatSize(entry.size)}</span>
+        {/* File list — hidden on mobile when viewing a file */}
+        {!(isMobile && viewingFile) && (
+          <div className={cn('border-r border-border overflow-y-auto', !isMobile && viewingFile ? 'w-64 min-w-64' : 'flex-1')}>
+            {currentPath && (
+              <button
+                onClick={handleGoUp}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:bg-accent/50 border-b border-border"
+              >
+                <Folder className="h-4 w-4" /> ..
+              </button>
+            )}
+            {entries.map(entry => (
+              <button
+                key={entry.name}
+                onClick={() => handleNavigate(entry)}
+                className={cn(
+                  'flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-accent/50 border-b border-border',
+                  viewingFile?.name === entry.name && 'bg-accent text-accent-foreground'
                 )}
-                {entry.type === 'directory' && (
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-              </div>
-            </button>
-          ))}
-          {entries.length === 0 && !loading && (
-            <p className="text-sm text-muted-foreground p-4 text-center">Empty directory</p>
-          )}
-        </div>
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {entry.type === 'directory'
+                    ? <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                    : <File className="h-4 w-4 text-muted-foreground shrink-0" />
+                  }
+                  <span className="truncate">{entry.name}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {entry.type === 'file' && (
+                    <span className="text-[10px] text-muted-foreground">{formatSize(entry.size)}</span>
+                  )}
+                  {entry.type === 'directory' && (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </div>
+              </button>
+            ))}
+            {entries.length === 0 && !loading && (
+              <p className="text-sm text-muted-foreground p-4 text-center">Empty directory</p>
+            )}
+          </div>
+        )}
 
         {/* File viewer */}
         {viewingFile && (
           <div className="flex-1 flex flex-col min-w-0">
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card/50 shrink-0">
-              <span className="text-sm font-mono truncate">{viewingFile.path}</span>
+              {isMobile && (
+                <button onClick={() => setViewingFile(null)} className="mr-2 text-muted-foreground hover:text-foreground">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              )}
+              <span className="text-sm font-mono truncate flex-1">{viewingFile.path}</span>
               <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{formatSize(viewingFile.size)}</span>
+              {!isMobile && (
+                <button onClick={() => setViewingFile(null)} className="ml-2 text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <pre className="flex-1 overflow-auto p-4 text-sm font-mono whitespace-pre-wrap break-words bg-background">
               {viewingFile.content}
