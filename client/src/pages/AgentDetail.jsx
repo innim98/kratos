@@ -9,7 +9,7 @@ import TextPanel from '../components/TextPanel.jsx';
 import PanelContent from '../components/PanelContent.jsx';
 import SplitView from '../components/SplitView.jsx';
 import AgentFiles from './AgentFiles.jsx';
-import { Columns2, Rows2, Square, BookOpen, FolderOpen } from 'lucide-react';
+import { Columns2, Rows2, Square, BookOpen, FolderOpen, Pencil, Check, X } from 'lucide-react';
 
 const SPLIT_MODES = [
   { key: 'horizontal', icon: Columns2, label: 'Side by side' },
@@ -61,6 +61,8 @@ export default function AgentDetail({ agentId }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [serverPort, setServerPort] = useState(null);
   const [showFullFiles, setShowFullFiles] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
   const termRef = useRef(null);
 
   useEffect(() => {
@@ -91,6 +93,28 @@ export default function AgentDetail({ agentId }) {
 
   const handleSendGuide = () => {
     termRef.current?.sendInput(buildApiGuide(agentId, serverPort || '15001'));
+  };
+
+  const handleStartRename = () => {
+    setEditName(agent?.name || '');
+    setEditing(true);
+  };
+
+  const handleRename = async () => {
+    if (!editName.trim()) return;
+    const res = await apiFetch(`/api/agents/${agentId}`, {
+      method: 'PUT',
+      body: { name: editName.trim() },
+    });
+    if (res.ok) {
+      loadAgent();
+      setEditing(false);
+    }
+  };
+
+  const handleRenameKeyDown = (e) => {
+    if (e.key === 'Enter') handleRename();
+    if (e.key === 'Escape') setEditing(false);
   };
 
   // Full-screen Files mode
@@ -127,8 +151,25 @@ export default function AgentDetail({ agentId }) {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">{agent?.name || `Agent #${agentId}`}</h2>
-          {agent && (
+          {editing ? (
+            <div className="flex items-center gap-1">
+              <input
+                autoFocus
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                onKeyDown={handleRenameKeyDown}
+                className="h-6 px-1.5 text-sm font-semibold bg-background border border-input rounded w-40 focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <button onClick={handleRename} className="text-emerald-500 hover:text-emerald-400"><Check className="h-3.5 w-3.5" /></button>
+              <button onClick={() => setEditing(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+            </div>
+          ) : (
+            <button onClick={handleStartRename} className="flex items-center gap-1.5 group" title="Click to rename">
+              <h2 className="text-sm font-semibold">{agent?.name || `Agent #${agentId}`}</h2>
+              <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          )}
+          {agent && !editing && (
             <span className={cn('inline-flex items-center gap-1 text-xs', agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}>
               <span className={cn('h-1.5 w-1.5 rounded-full', agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
               {agent.status}

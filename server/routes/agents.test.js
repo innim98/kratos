@@ -38,13 +38,39 @@ describe('agent routes', () => {
     expect(body.type).toBe('unmanaged');
   });
 
-  it('POST /api/agents should reject duplicate name', async () => {
+  it('POST /api/agents should allow duplicate name (different tmux session)', async () => {
     const res = await app.inject({
       method: 'POST', url: '/api/agents',
       headers: { authorization: `Bearer ${token}` },
       payload: { name: 'code-reviewer', tmux_session: 'cr-02' },
     });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.payload).name).toBe('code-reviewer');
+  });
+
+  it('POST /api/agents should reject duplicate tmux_session', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/agents',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'another', tmux_session: 'cr-01' },
+    });
     expect(res.statusCode).toBe(409);
+  });
+
+  it('PUT /api/agents/:id should rename agent', async () => {
+    const list = await app.inject({
+      method: 'GET', url: '/api/agents',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const agent = JSON.parse(list.payload)[0];
+
+    const res = await app.inject({
+      method: 'PUT', url: `/api/agents/${agent.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'renamed-agent' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.payload).name).toBe('renamed-agent');
   });
 
   it('GET /api/agents should include registered agent', async () => {
@@ -53,8 +79,8 @@ describe('agent routes', () => {
       headers: { authorization: `Bearer ${token}` },
     });
     const agents = JSON.parse(res.payload);
-    expect(agents).toHaveLength(1);
-    expect(agents[0].name).toBe('code-reviewer');
+    expect(agents.length).toBeGreaterThanOrEqual(1);
+    expect(agents[0]).toHaveProperty('name');
     expect(agents[0]).toHaveProperty('status');
   });
 
@@ -76,7 +102,7 @@ describe('agent routes', () => {
       method: 'GET', url: '/api/agents',
       headers: { authorization: `Bearer ${token}` },
     });
-    expect(JSON.parse(list2.payload)).toHaveLength(0);
+    expect(JSON.parse(list2.payload).find(a => a.id === agent.id)).toBeUndefined();
   });
 
   it('should reject unauthenticated requests', async () => {

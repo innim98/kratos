@@ -65,8 +65,21 @@ export default async function agentRoutes(app) {
         type: 'unmanaged',
       };
     } catch {
-      return reply.code(409).send({ error: 'Agent name or tmux_session already exists' });
+      return reply.code(409).send({ error: 'tmux_session already exists' });
     }
+  });
+
+  app.put('/api/agents/:id', { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params;
+    const { name } = request.body || {};
+
+    if (!name) return reply.code(400).send({ error: 'name is required' });
+
+    const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+    if (!agent) return reply.code(404).send({ error: 'Agent not found' });
+
+    db.prepare('UPDATE agents SET name = ? WHERE id = ?').run(name, id);
+    return { ...agent, name };
   });
 
   app.delete('/api/agents/:id', { preHandler: authenticate }, async (request, reply) => {
