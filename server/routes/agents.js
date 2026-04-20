@@ -22,12 +22,19 @@ export default async function agentRoutes(app) {
     const agents = db.prepare('SELECT * FROM agents ORDER BY id').all();
     const live = getTmuxSessions();
 
-    return agents.map(a => ({
-      ...a,
-      status: live.has(a.tmux_session) ? 'online' : 'offline',
-      lastActivity: live.get(a.tmux_session)?.activity || null,
-      webview: getWebview(a.id),
-    }));
+    return agents.map(a => {
+      // Auto-generate token for agents that don't have one (pre-migration)
+      if (!a.token) {
+        a.token = crypto.randomUUID();
+        db.prepare('UPDATE agents SET token = ? WHERE id = ?').run(a.token, a.id);
+      }
+      return {
+        ...a,
+        status: live.has(a.tmux_session) ? 'online' : 'offline',
+        lastActivity: live.get(a.tmux_session)?.activity || null,
+        webview: getWebview(a.id),
+      };
+    });
   });
 
   app.post('/api/agents', { preHandler: authenticate }, async (request, reply) => {
