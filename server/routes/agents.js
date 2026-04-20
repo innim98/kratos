@@ -48,8 +48,7 @@ export default async function agentRoutes(app) {
 
     // "from folder" flow: create a tmux session in that folder
     if (folder && !tmux_session) {
-      const suffix = Date.now().toString(36).slice(-4);
-      sessionName = `kratos-${name}-${suffix}`;
+      sessionName = `kratos-${Date.now().toString(36)}`;
       try {
         execSync(`tmux new-session -d -s ${sessionName} -c ${folder}`, {
           encoding: 'utf8', timeout: 5000,
