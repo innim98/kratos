@@ -3,7 +3,7 @@ import Header from './Header.jsx';
 import Sidebar from './Sidebar.jsx';
 import MobileNav from './MobileNav.jsx';
 
-export default function Layout({ view, selectedAgentId, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoMenu, children }) {
+export default function Layout({ view, selectedAgentId, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoMenu, children }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -23,6 +23,7 @@ export default function Layout({ view, selectedAgentId, onSelectAgent, onGoAgent
           onGoAgents={onGoAgents}
           onGoSettings={onGoSettings}
           onGoTodos={onGoTodos}
+          onGoPorts={onGoPorts}
           onGoMenu={onGoMenu}
         >
           {children}
@@ -42,6 +43,7 @@ export default function Layout({ view, selectedAgentId, onSelectAgent, onGoAgent
           onGoAgents={onGoAgents}
           onGoSettings={onGoSettings}
           onGoTodos={onGoTodos}
+          onGoPorts={onGoPorts}
         />
         <main className="flex-1 p-6 overflow-y-auto">
           {children}

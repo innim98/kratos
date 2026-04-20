@@ -33,6 +33,7 @@ import filesRoutes from './routes/files.js';
 import terminalTextRoutes from './routes/terminal-text.js';
 import todoRoutes from './routes/todos.js';
 import portsRoutes from './routes/ports.js';
+import portScanRoutes from './routes/port-scan.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -89,6 +90,7 @@ export async function buildServer(opts = {}) {
   await app.register(terminalTextRoutes);
   await app.register(todoRoutes);
   await app.register(portsRoutes);
+  await app.register(portScanRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };

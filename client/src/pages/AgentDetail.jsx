@@ -10,6 +10,7 @@ import TodosPanel from '../components/TodosPanel.jsx';
 import PanelContent from '../components/PanelContent.jsx';
 import SplitView from '../components/SplitView.jsx';
 import AgentFiles from './AgentFiles.jsx';
+import AgentStatusDialog from '../components/AgentStatusDialog.jsx';
 import { Columns2, Rows2, Square, BookOpen, FolderOpen, Pencil, Check, X } from 'lucide-react';
 
 const SPLIT_MODES = [
@@ -98,6 +99,7 @@ export default function AgentDetail({ agentId }) {
   const [serverPort, setServerPort] = useState(null);
   const [showFullFiles, setShowFullFiles] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const termRef = useRef(null);
 
@@ -206,12 +208,17 @@ export default function AgentDetail({ agentId }) {
             </button>
           )}
           {agent && !editing && (
-            <span className={cn('inline-flex items-center gap-1 text-xs', agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}>
+            <button
+              onClick={() => setStatusOpen(true)}
+              className={cn('inline-flex items-center gap-1 text-xs cursor-pointer hover:underline', agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}
+              title="View agent details"
+            >
               <span className={cn('h-1.5 w-1.5 rounded-full', agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
               {agent.status}
-            </span>
+            </button>
           )}
         </div>
+        <AgentStatusDialog agent={agent} open={statusOpen} onOpenChange={setStatusOpen} />
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowFullFiles(true)} title="Full-screen file browser">
             <FolderOpen className="h-3.5 w-3.5 mr-1" /> Files

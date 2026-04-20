@@ -1,6 +1,6 @@
-import { ChevronLeft, Bot, Settings, ListTodo } from 'lucide-react';
+import { ChevronLeft, Bot, Settings, ListTodo, Network } from 'lucide-react';
 
-export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoMenu, children }) {
+export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoMenu, children }) {
   // State A: Menu
   if (view === 'welcome') {
     return (
@@ -11,6 +11,10 @@ export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAg
         </button>
         <button onClick={onGoTodos} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card text-left">
           <div className="flex items-center gap-3"><ListTodo className="h-5 w-5 text-muted-foreground" /><span className="font-medium">Todos</span></div>
+          <ChevronLeft className="h-4 w-4 text-muted-foreground rotate-180" />
+        </button>
+        <button onClick={onGoPorts} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card text-left">
+          <div className="flex items-center gap-3"><Network className="h-5 w-5 text-muted-foreground" /><span className="font-medium">Ports</span></div>
           <ChevronLeft className="h-4 w-4 text-muted-foreground rotate-180" />
         </button>
         <button onClick={onGoSettings} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card text-left">
@@ -25,6 +29,7 @@ export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAg
   const backViews = {
     agents: { label: 'Agents', back: onGoMenu },
     todos: { label: 'Todos', back: onGoMenu },
+    ports: { label: 'Ports', back: onGoMenu },
     settings: { label: 'Settings', back: onGoMenu },
     'agent-detail': { label: '', back: onGoAgents },
   };
