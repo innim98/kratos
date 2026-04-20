@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import crypto from 'crypto';
 import { getTmuxSessions } from '../lib/tmux.js';
 import { getWebview } from './webview.js';
 
@@ -55,14 +56,16 @@ export default async function agentRoutes(app) {
     }
 
     try {
+      const agentToken = crypto.randomUUID();
       const result = db.prepare(
-        'INSERT INTO agents (name, tmux_session) VALUES (?, ?)'
-      ).run(name, sessionName);
+        'INSERT INTO agents (name, tmux_session, token) VALUES (?, ?, ?)'
+      ).run(name, sessionName, agentToken);
       return {
         id: result.lastInsertRowid,
         name,
         tmux_session: sessionName,
         type: 'unmanaged',
+        token: agentToken,
       };
     } catch {
       return reply.code(409).send({ error: 'tmux_session already exists' });

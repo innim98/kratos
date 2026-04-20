@@ -31,6 +31,8 @@ import sharedPageRoutes from './routes/shared-page.js';
 import uploadRoutes from './routes/upload.js';
 import filesRoutes from './routes/files.js';
 import terminalTextRoutes from './routes/terminal-text.js';
+import todoRoutes from './routes/todos.js';
+import portsRoutes from './routes/ports.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -85,6 +87,8 @@ export async function buildServer(opts = {}) {
   await app.register(uploadRoutes);
   await app.register(filesRoutes);
   await app.register(terminalTextRoutes);
+  await app.register(todoRoutes);
+  await app.register(portsRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };
