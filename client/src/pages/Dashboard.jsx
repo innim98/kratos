@@ -15,9 +15,11 @@ export default function Dashboard() {
 
   // Request notification permission on mount
   useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    } catch {}
   }, []);
 
   // Listen for agent-done events via WS
