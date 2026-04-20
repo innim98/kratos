@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog.js
 import { Badge } from './ui/badge.jsx';
 import { apiFetch } from '../lib/api.js';
 import { cn } from '../lib/utils.js';
-import { Copy, Check, Network } from 'lucide-react';
+import { Copy, Check, Network, ExternalLink } from 'lucide-react';
 
 export default function AgentStatusDialog({ agent, open, onOpenChange }) {
   const [ports, setPorts] = useState([]);
@@ -71,7 +71,18 @@ export default function AgentStatusDialog({ agent, open, onOpenChange }) {
                       <span className="font-mono text-xs">:{p.port}</span>
                       <span className="text-muted-foreground">{p.label}</span>
                     </div>
-                    <Badge variant="outline" className="text-[10px]">{p.type}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">{p.type}</Badge>
+                      <a
+                        href={`http://${window.location.hostname}:${p.port}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="text-muted-foreground hover:text-foreground"
+                        title="Open in new tab"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>
