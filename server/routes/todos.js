@@ -16,7 +16,20 @@ export default async function todoRoutes(app) {
     if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
     sql += ' ORDER BY priority DESC, created_at DESC';
 
-    return db.prepare(sql).all(...params);
+    const todos = db.prepare(sql).all(...params);
+
+    // Enrich with creator name
+    return todos.map(t => {
+      let createdByName = null;
+      if (t.created_by_type === 'user') {
+        const user = db.prepare('SELECT username FROM users WHERE id = ?').get(t.created_by_id);
+        createdByName = user?.username || null;
+      } else if (t.created_by_type === 'agent') {
+        const agent = db.prepare('SELECT name FROM agents WHERE id = ?').get(t.created_by_id);
+        createdByName = agent?.name || null;
+      }
+      return { ...t, created_by_name: createdByName };
+    });
   });
 
   app.post('/api/todos', { preHandler: auth }, async (request, reply) => {

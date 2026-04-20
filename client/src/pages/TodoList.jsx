@@ -180,8 +180,8 @@ export default function TodoList({ agentFilter }) {
                   {agentName && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{agentName}</Badge>
                   )}
-                  {todo.created_by_type === 'agent' && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">agent</Badge>
+                  {todo.created_by_name && (
+                    <span className="text-[10px] text-muted-foreground">by {todo.created_by_name}</span>
                   )}
                 </div>
                 {todo.description && (
