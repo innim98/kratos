@@ -217,6 +217,24 @@ export default function AgentDetail({ agentId }) {
               {agent.status}
             </button>
           )}
+          {/* Port links */}
+          {agent?.ports?.length > 0 && (
+            <div className="flex items-center gap-1 ml-2">
+              {agent.ports.map(p => (
+                <a
+                  key={p.id}
+                  href={`http://${window.location.hostname}:${p.port}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-secondary text-secondary-foreground hover:bg-accent"
+                  title={p.label || `Port ${p.port}`}
+                >
+                  :{p.port}
+                  {p.label && <span className="text-muted-foreground">{p.label}</span>}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
         <AgentStatusDialog agent={agent} open={statusOpen} onOpenChange={setStatusOpen} />
         <div className="flex items-center gap-1">

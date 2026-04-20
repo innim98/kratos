@@ -28,11 +28,13 @@ export default async function agentRoutes(app) {
         a.token = crypto.randomUUID();
         db.prepare('UPDATE agents SET token = ? WHERE id = ?').run(a.token, a.id);
       }
+      const ports = db.prepare('SELECT * FROM agent_ports WHERE agent_id = ? ORDER BY created_at').all(a.id);
       return {
         ...a,
         status: live.has(a.tmux_session) ? 'online' : 'offline',
         lastActivity: live.get(a.tmux_session)?.activity || null,
         webview: getWebview(a.id),
+        ports,
       };
     });
   });

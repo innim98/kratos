@@ -1,12 +1,32 @@
 // In-memory webview state per agent (agentId → { port, path })
 const webviews = new Map();
 
+// dbRef is set when routes are registered
+let dbRef = null;
+
 export function getWebview(agentId) {
-  return webviews.get(agentId) || null;
+  // Check memory first
+  const mem = webviews.get(agentId);
+  if (mem) return mem;
+
+  // Fallback: check agent_ports table for type='webview'
+  if (dbRef) {
+    const row = dbRef.prepare(
+      "SELECT port FROM agent_ports WHERE agent_id = ? AND type = 'webview' ORDER BY created_at DESC LIMIT 1"
+    ).get(agentId);
+    if (row) {
+      const webview = { port: row.port, path: '/' };
+      webviews.set(agentId, webview); // cache it
+      return webview;
+    }
+  }
+
+  return null;
 }
 
 export default async function webviewRoutes(app) {
   const { db } = app;
+  dbRef = db;
 
   const localhostOnly = async (request, reply) => {
     const ip = request.ip;
@@ -31,7 +51,6 @@ export default async function webviewRoutes(app) {
     const webview = { port, path };
     webviews.set(Number(id), webview);
 
-    // Push to all connected WS clients
     if (app.websocketServer) {
       const msg = JSON.stringify({ type: 'webview-update', agentId: Number(id), webview });
       for (const client of app.websocketServer.clients) {
