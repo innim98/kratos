@@ -6,6 +6,7 @@ import TerminalPanel from '../components/TerminalPanel.jsx';
 import WebviewPanel from '../components/WebviewPanel.jsx';
 import FilesPanel from '../components/FilesPanel.jsx';
 import TextPanel from '../components/TextPanel.jsx';
+import TodosPanel from '../components/TodosPanel.jsx';
 import PanelContent from '../components/PanelContent.jsx';
 import SplitView from '../components/SplitView.jsx';
 import AgentFiles from './AgentFiles.jsx';
@@ -18,7 +19,7 @@ const SPLIT_MODES = [
 ];
 
 const LEFT_TABS = ['terminal', 'files', 'text'];
-const RIGHT_TABS = ['webview', 'files', 'text'];
+const RIGHT_TABS = ['webview', 'files', 'text', 'todos'];
 
 function buildApiGuide(agentId, serverPort, agentToken) {
   const authHeader = agentToken
@@ -81,6 +82,7 @@ function renderPanelContent(tab, agentId, termRef, agent) {
   if (tab === 'files') return <FilesPanel agentId={agentId} />;
   if (tab === 'text') return <TextPanel agentId={agentId} />;
   if (tab === 'webview') return <WebviewPanel webview={agent?.webview} agentId={agentId} />;
+  if (tab === 'todos') return <TodosPanel agentId={agentId} />;
   return null;
 }
 

@@ -3,9 +3,10 @@ import Layout from '../components/Layout.jsx';
 import AgentList from './AgentList.jsx';
 import AgentDetail from './AgentDetail.jsx';
 import Settings from './Settings.jsx';
+import TodoList from './TodoList.jsx';
 
 export default function Dashboard() {
-  const [view, setView] = useState('welcome');   // 'welcome' | 'agents' | 'agent-detail' | 'settings'
+  const [view, setView] = useState('welcome');
   const [selectedAgentId, setSelectedAgentId] = useState(null);
 
   const selectAgent = (agentId) => {
@@ -13,26 +14,18 @@ export default function Dashboard() {
     setView('agent-detail');
   };
 
-  const goAgents = () => {
-    setView('agents');
-    setSelectedAgentId(null);
-  };
-
-  const goSettings = () => {
-    setView('settings');
-    setSelectedAgentId(null);
-  };
-
-  const goMenu = () => {
-    setView('welcome');
-    setSelectedAgentId(null);
-  };
+  const goAgents = () => { setView('agents'); setSelectedAgentId(null); };
+  const goSettings = () => { setView('settings'); setSelectedAgentId(null); };
+  const goTodos = () => { setView('todos'); setSelectedAgentId(null); };
+  const goMenu = () => { setView('welcome'); setSelectedAgentId(null); };
 
   let content;
   if (view === 'agents') {
     content = <AgentList onSelectAgent={selectAgent} />;
   } else if (view === 'agent-detail' && selectedAgentId) {
     content = <AgentDetail agentId={selectedAgentId} />;
+  } else if (view === 'todos') {
+    content = <TodoList />;
   } else if (view === 'settings') {
     content = <Settings />;
   } else {
@@ -46,6 +39,7 @@ export default function Dashboard() {
       onSelectAgent={selectAgent}
       onGoAgents={goAgents}
       onGoSettings={goSettings}
+      onGoTodos={goTodos}
       onGoMenu={goMenu}
     >
       {content}

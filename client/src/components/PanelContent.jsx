@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { cn } from '../lib/utils.js';
-import { Terminal, FolderOpen, Monitor, FileText } from 'lucide-react';
+import { Terminal, FolderOpen, Monitor, FileText, ListTodo } from 'lucide-react';
 
 const TAB_ICONS = {
   terminal: Terminal,
   files: FolderOpen,
   webview: Monitor,
   text: FileText,
+  todos: ListTodo,
 };
 
 const TAB_LABELS = {
@@ -14,6 +15,7 @@ const TAB_LABELS = {
   files: 'Files',
   webview: 'Webview',
   text: 'Text',
+  todos: 'Todos',
 };
 
 export default function PanelContent({ tabs, activeTab, onTabChange, children }) {
