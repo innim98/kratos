@@ -4,7 +4,7 @@ import { Button } from './ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import { Bot, Settings, ChevronLeft, ListTodo, Network } from 'lucide-react';
 
-export default function Sidebar({ view, selectedAgentId, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts }) {
+export default function Sidebar({ view, selectedAgentId, doneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts }) {
   const [agents, setAgents] = useState([]);
 
   useEffect(() => {
@@ -27,21 +27,26 @@ export default function Sidebar({ view, selectedAgentId, onSelectAgent, onGoAgen
         </button>
 
         <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
-          {agents.map(a => (
-            <button
-              key={a.id}
-              onClick={() => onSelectAgent(a.id)}
-              className={cn(
-                'flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm text-left',
-                a.id === selectedAgentId
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent/50 text-muted-foreground'
-              )}
-            >
-              <span className={cn('h-2 w-2 rounded-full', a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
-              <span className="truncate">{a.name}</span>
-            </button>
-          ))}
+          {agents.map(a => {
+            const isDone = doneAgents?.has(a.id);
+            return (
+              <button
+                key={a.id}
+                onClick={() => onSelectAgent(a.id)}
+                className={cn(
+                  'flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm text-left',
+                  isDone && 'bg-emerald-500/10 border border-emerald-500/30',
+                  a.id === selectedAgentId
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent/50 text-muted-foreground'
+                )}
+              >
+                <span className={cn('h-2 w-2 rounded-full', isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+                <span className={cn('truncate', isDone && 'font-bold text-emerald-400')}>{a.name}</span>
+                {isDone && <span className="text-[10px] text-emerald-400 ml-auto">done</span>}
+              </button>
+            );
+          })}
         </div>
 
         <div className="border-t border-border p-1.5 space-y-0.5">

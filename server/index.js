@@ -34,6 +34,7 @@ import terminalTextRoutes from './routes/terminal-text.js';
 import todoRoutes from './routes/todos.js';
 import portsRoutes from './routes/ports.js';
 import portScanRoutes from './routes/port-scan.js';
+import { startActivityMonitor } from './lib/activity-monitor.js';
 
 function getArg(flags) {
   for (const flag of flags) {
@@ -103,6 +104,16 @@ export async function buildServer(opts = {}) {
 
   if (!testing) {
     await app.listen({ port, host: '0.0.0.0' });
+
+    // Start activity monitor — broadcast to all WS clients
+    startActivityMonitor(db, (msg) => {
+      const data = JSON.stringify(msg);
+      if (app.websocketServer) {
+        for (const client of app.websocketServer.clients) {
+          if (client.readyState === 1) client.send(data);
+        }
+      }
+    });
   }
 
   return app;
