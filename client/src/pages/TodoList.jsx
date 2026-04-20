@@ -170,6 +170,7 @@ export default function TodoList({ agentFilter }) {
               </button>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-muted-foreground shrink-0">K-{todo.id}</span>
                   <span className={cn('text-sm', todo.status === 'completed' && 'line-through text-muted-foreground')}>
                     {todo.title}
                   </span>
