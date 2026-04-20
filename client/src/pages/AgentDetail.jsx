@@ -93,7 +93,7 @@ export default function AgentDetail({ agentId }) {
     localStorage.getItem('kratos_split_mode') || 'horizontal'
   );
   const [leftTab, setLeftTab] = useState('terminal');
-  const [rightTab, setRightTab] = useState('webview');
+  const [rightTab, setRightTab] = useState('todos');
   const [mobileTab, setMobileTab] = useState('terminal');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [serverPort, setServerPort] = useState(null);
