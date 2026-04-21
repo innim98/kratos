@@ -233,7 +233,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
           type="text"
           placeholder="Input..."
           onKeyDown={handleInputKeyDown}
-          className="flex-1 min-w-0 h-7 px-2 text-sm bg-background border border-input rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="flex-1 min-w-0 h-7 px-2 text-base bg-background border border-input rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
         <button
           onMouseDown={(e) => e.preventDefault()}
