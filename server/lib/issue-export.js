@@ -1,5 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECTS_DIR = path.join(__dirname, '..', '..', 'projects');
 
 const PRIORITY_LABELS = { 1: 'P1', 2: 'P2', 3: 'P3', 4: 'P4', 5: 'P5' };
 
@@ -14,7 +18,7 @@ export function exportIssue(db, issue) {
   const project = db.prepare('SELECT * FROM projects WHERE code = ?').get(issue.project_code);
   if (!project) return;
 
-  const historyDir = path.join(project.folder, 'history');
+  const historyDir = path.join(PROJECTS_DIR, project.code.toLowerCase());
   fs.mkdirSync(historyDir, { recursive: true });
 
   const issueId = `${issue.project_code}-${issue.issue_number}`;
@@ -69,7 +73,7 @@ export function exportIssue(db, issue) {
 }
 
 export function exportReadme(db, project) {
-  const historyDir = path.join(project.folder, 'history');
+  const historyDir = path.join(PROJECTS_DIR, project.code.toLowerCase());
   fs.mkdirSync(historyDir, { recursive: true });
 
   const issues = db.prepare(

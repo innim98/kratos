@@ -124,8 +124,9 @@ describe('issues API', () => {
   });
 
   it('should export issue files', async () => {
-    const readmePath = path.join(tmpDir, 'history', 'README.md');
-    const issuePath = path.join(tmpDir, 'history', 'HT-1.md');
+    const projectsDir = path.join(__dirname, '..', '..', 'projects');
+    const readmePath = path.join(projectsDir, 'ht', 'README.md');
+    const issuePath = path.join(projectsDir, 'ht', 'HT-1.md');
 
     expect(fs.existsSync(readmePath)).toBe(true);
     expect(fs.existsSync(issuePath)).toBe(true);
