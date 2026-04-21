@@ -113,6 +113,29 @@ export default function AgentDetail({ agentId }) {
     const MOBILE_TABS = ['terminal', 'webview', 'files', 'text'];
     return (
       <div className="flex flex-col h-full">
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
+          <span className="text-sm font-semibold">{agent?.name || `Agent #${agentId}`}</span>
+          {agent && (
+            <button
+              onClick={() => setStatusOpen(true)}
+              className={cn('inline-flex items-center gap-1 text-xs', agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}
+            >
+              <span className={cn('h-1.5 w-1.5 rounded-full', agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+              {agent.status}
+            </button>
+          )}
+          {agent?.ports?.length > 0 && (
+            <div className="flex items-center gap-1">
+              {agent.ports.map(p => (
+                <a key={p.id} href={`http://${window.location.hostname}:${p.port}`} target="_blank" rel="noopener"
+                  className="text-[10px] font-mono px-1 py-0.5 rounded bg-secondary text-secondary-foreground">
+                  :{p.port}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+        <AgentStatusDialog agent={agent} open={statusOpen} onOpenChange={setStatusOpen} />
         <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab}>
           {renderPanelContent(mobileTab, agentId, termRef, agent)}
         </PanelContent>
