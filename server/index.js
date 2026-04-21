@@ -34,6 +34,8 @@ import terminalTextRoutes from './routes/terminal-text.js';
 import todoRoutes from './routes/todos.js';
 import portsRoutes from './routes/ports.js';
 import portScanRoutes from './routes/port-scan.js';
+import projectRoutes from './routes/projects.js';
+import issueRoutes from './routes/issues.js';
 import { startActivityMonitor } from './lib/activity-monitor.js';
 
 function getArg(flags) {
@@ -92,6 +94,8 @@ export async function buildServer(opts = {}) {
   await app.register(todoRoutes);
   await app.register(portsRoutes);
   await app.register(portScanRoutes);
+  await app.register(projectRoutes);
+  await app.register(issueRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };
