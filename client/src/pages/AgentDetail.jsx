@@ -74,6 +74,31 @@ curl -X PUT http://localhost:${serverPort}/api/todos/<TODO_ID> \\
   -H "Content-Type: application/json" \\
   -d '{"status": "completed"}'
 
+# --- Issues ---
+
+# Create an issue
+curl -X POST http://localhost:${serverPort}/api/issues \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"project_code": "<CODE>", "title": "Issue title", "description": "Details", "priority": 3}'
+
+# Add comment to issue
+curl -X POST http://localhost:${serverPort}/api/issues/<CODE>-<NUM>/comments \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"body": "Comment text"}'
+
+# Attach image to issue
+curl -X POST http://localhost:${serverPort}/api/issues/<CODE>-<NUM>/attachments \\
+  ${authHeader} \\
+  -F "files=@/path/to/screenshot.png"
+
+# Update issue status
+curl -X PUT http://localhost:${serverPort}/api/issues/<CODE>-<NUM> \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"status": "inprogress"}'
+
 KRATOS_API_GUIDE
 `;
 }

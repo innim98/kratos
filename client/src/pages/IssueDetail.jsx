@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { apiFetch } from '../lib/api.js';
+import { useState, useEffect, useRef } from 'react';
+import { apiFetch, getToken } from '../lib/api.js';
 import { Button } from '../components/ui/button.jsx';
 import { Badge } from '../components/ui/badge.jsx';
 import { cn } from '../lib/utils.js';
-import { ArrowLeft, Send, Reply } from 'lucide-react';
+import { ArrowLeft, Send, Reply, Paperclip, Image } from 'lucide-react';
 
 const STATUSES = ['pending', 'todo', 'inprogress', 'verification', 'completed'];
 const STATUS_COLORS = {
@@ -18,14 +18,36 @@ export default function IssueDetail({ issueKey, onBack }) {
   const [issue, setIssue] = useState(null);
   const [commentBody, setCommentBody] = useState('');
   const [replyTo, setReplyTo] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const load = () => {
     apiFetch(`/api/issues/${issueKey}`).then(r => r.json()).then(d => {
       if (d.id) setIssue(d);
     });
+    apiFetch(`/api/issues/${issueKey}/attachments`).then(r => r.json()).then(d => {
+      if (Array.isArray(d)) setAttachments(d);
+    });
   };
 
   useEffect(load, [issueKey]);
+
+  const handleUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const formData = new FormData();
+    for (const f of files) formData.append('files', f);
+    await fetch(`/api/issues/${issueKey}/attachments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    });
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    load();
+  };
 
   const handleStatusChange = async (newStatus) => {
     await apiFetch(`/api/issues/${issueKey}`, { method: 'PUT', body: { status: newStatus } });
@@ -94,6 +116,30 @@ export default function IssueDetail({ issueKey, onBack }) {
       {/* Description */}
       <div className="rounded-lg border border-border bg-card p-4 mb-6">
         <pre className="text-sm whitespace-pre-wrap break-words">{issue.description || '(no description)'}</pre>
+      </div>
+
+      {/* Attachments */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium flex items-center gap-1.5">
+            <Paperclip className="h-4 w-4" /> Attachments ({attachments.length})
+          </h3>
+          <div>
+            <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <Image className="h-3.5 w-3.5 mr-1" /> {uploading ? '...' : 'Attach'}
+            </Button>
+          </div>
+        </div>
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {attachments.map(a => (
+              <a key={a.name} href={a.url} target="_blank" rel="noopener" className="block rounded border border-border overflow-hidden hover:border-accent/50">
+                <img src={a.url} alt={a.name} className="h-24 w-auto object-cover" />
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Comments */}
