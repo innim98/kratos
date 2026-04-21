@@ -22,86 +22,6 @@ const SPLIT_MODES = [
 const LEFT_TABS = ['terminal', 'files', 'text'];
 const RIGHT_TABS = ['webview', 'files', 'text', 'todos'];
 
-function buildApiGuide(agentId, serverPort, agentToken) {
-  const authHeader = agentToken
-    ? `-H "Authorization: Bearer ${agentToken}"`
-    : '-H "Authorization: Bearer <AGENT_TOKEN>"';
-
-  return `cat << 'KRATOS_API_GUIDE'
-
-=== Kratos API Guide (Agent #${agentId}) ===
-Server: http://localhost:${serverPort}
-Token: ${agentToken || '<not generated>'}
-
-# --- Webview (localhost-only, no auth needed) ---
-
-# Register webview port
-curl -X POST http://localhost:${serverPort}/api/agents/${agentId}/webview \\
-  -H "Content-Type: application/json" \\
-  -d '{"port": <YOUR_PORT>, "path": "/"}'
-
-# Read page text / screenshot
-curl -s http://localhost:${serverPort}/api/agents/${agentId}/webview/dom | jq '.text'
-curl -s http://localhost:${serverPort}/api/agents/${agentId}/webview/screenshot | jq -r '.base64' | base64 -d > /tmp/screenshot.png
-
-# --- Port Registration (register ALL ports you use) ---
-# Webview, DB, cache, API servers — register them all for monitoring
-
-curl -X POST http://localhost:${serverPort}/api/agents/${agentId}/ports \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"port": 5173, "label": "Vite dev server", "type": "webview"}'
-
-curl -X POST http://localhost:${serverPort}/api/agents/${agentId}/ports \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"port": 5432, "label": "PostgreSQL", "type": "service"}'
-
-# --- Todos (use agent token for auth) ---
-
-# Create a todo
-curl -X POST http://localhost:${serverPort}/api/todos \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"title": "Task description", "priority": 3}'
-
-# List todos
-curl -s http://localhost:${serverPort}/api/todos ${authHeader}
-
-# Complete a todo (agents can only complete their own)
-curl -X PUT http://localhost:${serverPort}/api/todos/<TODO_ID> \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"status": "completed"}'
-
-# --- Issues ---
-
-# Create an issue
-curl -X POST http://localhost:${serverPort}/api/issues \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"project_code": "<CODE>", "title": "Issue title", "description": "Details", "priority": 3}'
-
-# Add comment to issue
-curl -X POST http://localhost:${serverPort}/api/issues/<CODE>-<NUM>/comments \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"body": "Comment text"}'
-
-# Attach image to issue
-curl -X POST http://localhost:${serverPort}/api/issues/<CODE>-<NUM>/attachments \\
-  ${authHeader} \\
-  -F "files=@/path/to/screenshot.png"
-
-# Update issue status
-curl -X PUT http://localhost:${serverPort}/api/issues/<CODE>-<NUM> \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"status": "inprogress"}'
-
-KRATOS_API_GUIDE
-`;
-}
 
 function renderPanelContent(tab, agentId, termRef, agent) {
   if (tab === 'terminal') return <TerminalPanel ref={termRef} agentId={agentId} />;
@@ -155,7 +75,10 @@ export default function AgentDetail({ agentId }) {
   }, []);
 
   const handleSendGuide = () => {
-    termRef.current?.sendInput(buildApiGuide(agentId, serverPort || '15001', agent?.token));
+    const port = serverPort || '15001';
+    const guideUrl = `http://localhost:${port}/api/agents/${agentId}/guide`;
+    const msg = `# Kratos API Guide: ${guideUrl}\n# Token: ${agent?.token || 'none'}\ncurl -s ${guideUrl}\n`;
+    termRef.current?.sendInput(msg);
   };
 
   const handleStartRename = () => {

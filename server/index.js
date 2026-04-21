@@ -37,6 +37,7 @@ import portScanRoutes from './routes/port-scan.js';
 import projectRoutes from './routes/projects.js';
 import issueRoutes from './routes/issues.js';
 import attachmentRoutes from './routes/attachments.js';
+import guideRoutes from './routes/guide.js';
 import { startActivityMonitor } from './lib/activity-monitor.js';
 
 function getArg(flags) {
@@ -98,6 +99,7 @@ export async function buildServer(opts = {}) {
   await app.register(projectRoutes);
   await app.register(issueRoutes);
   await app.register(attachmentRoutes);
+  await app.register(guideRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };
