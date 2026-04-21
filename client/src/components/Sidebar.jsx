@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api.js';
 import { Button } from './ui/button.jsx';
 import { cn } from '../lib/utils.js';
-import { Bot, Settings, ChevronLeft, ListTodo, Network } from 'lucide-react';
+import { Bot, Settings, ChevronLeft, ListTodo, Network, AlertCircle } from 'lucide-react';
 
-export default function Sidebar({ view, selectedAgentId, doneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts }) {
+export default function Sidebar({ view, selectedAgentId, doneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues }) {
   const [agents, setAgents] = useState([]);
 
   useEffect(() => {
@@ -53,6 +53,9 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, onSelectAge
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onGoTodos}>
             <ListTodo className="h-4 w-4 mr-2" /> Todos
           </Button>
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onGoIssues}>
+            <AlertCircle className="h-4 w-4 mr-2" /> Issues
+          </Button>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onGoPorts}>
             <Network className="h-4 w-4 mr-2" /> Ports
           </Button>
@@ -83,6 +86,14 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, onSelectAge
           onClick={onGoTodos}
         >
           <ListTodo className="h-4 w-4 mr-2" /> Todos
+        </Button>
+        <Button
+          variant={view === 'issues' ? 'secondary' : 'ghost'}
+          size="sm"
+          className="w-full justify-start"
+          onClick={onGoIssues}
+        >
+          <AlertCircle className="h-4 w-4 mr-2" /> Issues
         </Button>
         <Button
           variant={view === 'ports' ? 'secondary' : 'ghost'}

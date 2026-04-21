@@ -5,6 +5,7 @@ import AgentDetail from './AgentDetail.jsx';
 import Settings from './Settings.jsx';
 import TodoList from './TodoList.jsx';
 import PortsDashboard from './PortsDashboard.jsx';
+import Issues from './Issues.jsx';
 import { getToken } from '../lib/api.js';
 import { playNotificationSound, showBrowserNotification } from '../lib/notify.js';
 
@@ -59,6 +60,7 @@ export default function Dashboard() {
   const goSettings = () => { setView('settings'); setSelectedAgentId(null); };
   const goTodos = () => { setView('todos'); setSelectedAgentId(null); };
   const goPorts = () => { setView('ports'); setSelectedAgentId(null); };
+  const goIssues = () => { setView('issues'); setSelectedAgentId(null); };
   const goMenu = () => { setView('welcome'); setSelectedAgentId(null); };
 
   let content;
@@ -66,6 +68,7 @@ export default function Dashboard() {
   else if (view === 'agent-detail' && selectedAgentId) content = <AgentDetail agentId={selectedAgentId} />;
   else if (view === 'todos') content = <TodoList />;
   else if (view === 'ports') content = <PortsDashboard />;
+  else if (view === 'issues') content = <Issues />;
   else if (view === 'settings') content = <Settings />;
   else content = <div className="flex items-center justify-center h-full text-muted-foreground text-lg">Welcome to Kratos</div>;
 
@@ -79,6 +82,7 @@ export default function Dashboard() {
       onGoSettings={goSettings}
       onGoTodos={goTodos}
       onGoPorts={goPorts}
+      onGoIssues={goIssues}
       onGoMenu={goMenu}
     >
       {content}
