@@ -32,7 +32,7 @@ export default function TextPanel({ agentId }) {
           <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
         </button>
       </div>
-      <pre className="flex-1 overflow-auto p-3 text-sm font-mono whitespace-pre-wrap break-words bg-background select-text">
+      <pre className="flex-1 overflow-auto p-3 text-sm md:text-sm text-xs font-mono whitespace-pre-wrap break-words bg-background select-text">
         {text}
       </pre>
     </div>
