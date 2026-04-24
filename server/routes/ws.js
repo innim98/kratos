@@ -60,7 +60,7 @@ export default async function wsRoutes(app) {
             cols: msg.cols || 80,
             rows: msg.rows || 24,
             cwd: process.env.HOME,
-            env: { ...process.env, TERM: 'xterm-256color' },
+            env: { ...process.env, TERM: 'xterm-256color', PORT: '', CLIENT_PORT: '' },
           });
         } catch (e) {
           app.log.error({ err: e }, 'Failed to spawn PTY for tmux attach');

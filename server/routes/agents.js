@@ -54,6 +54,7 @@ export default async function agentRoutes(app) {
       try {
         execSync(`tmux new-session -d -s ${sessionName} -c ${folder}`, {
           encoding: 'utf8', timeout: 5000,
+          env: { ...process.env, PORT: '', CLIENT_PORT: '' },
         });
       } catch {
         // Session might already exist, that's ok — we'll just register it
