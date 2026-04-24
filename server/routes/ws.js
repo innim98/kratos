@@ -16,12 +16,21 @@ export default async function wsRoutes(app) {
     let ptyProcess = null;
     let attached = false;
 
+    function cleanupPty() {
+      if (ptyProcess) {
+        try { ptyProcess.kill(); } catch {}
+        ptyProcess = null;
+      }
+      attached = false;
+    }
+
     socket.on('message', (raw) => {
       let msg;
       try { msg = JSON.parse(raw.toString()); } catch { return; }
 
       if (msg.type === 'attach') {
-        if (attached) return;
+        // Kill previous PTY if re-attaching
+        cleanupPty();
 
         const { db } = app;
         const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(msg.agentId);
@@ -43,7 +52,7 @@ export default async function wsRoutes(app) {
           // tmux session might not exist
         }
 
-        // Spawn tmux attach via PTY (-d detaches other clients first)
+        // Spawn tmux attach via PTY
         try {
           const shell = process.env.SHELL || '/bin/zsh';
           ptyProcess = pty.spawn(shell, ['-c', `tmux attach -dt ${agent.tmux_session} || tmux new-session -As ${agent.tmux_session}`], {
@@ -56,6 +65,7 @@ export default async function wsRoutes(app) {
         } catch (e) {
           app.log.error({ err: e }, 'Failed to spawn PTY for tmux attach');
           socket.send(JSON.stringify({ type: 'error', message: `Failed to attach: ${e.message}` }));
+          attached = false;
           return;
         }
 
@@ -63,15 +73,15 @@ export default async function wsRoutes(app) {
 
         ptyProcess.onData((data) => {
           if (socket.readyState === 1) {
-            socket.send(JSON.stringify({ type: 'output', data }));
+            try { socket.send(JSON.stringify({ type: 'output', data })); } catch {}
           }
         });
 
-        ptyProcess.onExit(({ exitCode }) => {
+        ptyProcess.onExit(() => {
           attached = false;
           ptyProcess = null;
           if (socket.readyState === 1) {
-            socket.send(JSON.stringify({ type: 'session-ended' }));
+            try { socket.send(JSON.stringify({ type: 'session-ended' })); } catch {}
           }
         });
 
@@ -80,30 +90,22 @@ export default async function wsRoutes(app) {
       }
 
       if (msg.type === 'input' && ptyProcess) {
-        ptyProcess.write(msg.data);
+        try { ptyProcess.write(msg.data); } catch {}
         return;
       }
 
       if (msg.type === 'resize' && ptyProcess) {
-        ptyProcess.resize(msg.cols, msg.rows);
+        try { ptyProcess.resize(msg.cols, msg.rows); } catch {}
         return;
       }
 
       if (msg.type === 'detach') {
-        if (ptyProcess) {
-          ptyProcess.kill();
-          ptyProcess = null;
-        }
-        attached = false;
+        cleanupPty();
         return;
       }
     });
 
-    socket.on('close', () => {
-      if (ptyProcess) {
-        ptyProcess.kill();
-        ptyProcess = null;
-      }
-    });
+    socket.on('close', () => { cleanupPty(); });
+    socket.on('error', () => { cleanupPty(); });
   });
 }

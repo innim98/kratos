@@ -166,10 +166,12 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
 
     return () => {
       resizeObserver.disconnect();
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'detach' }));
+      try {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'detach' }));
+        }
         ws.close();
-      }
+      } catch {}
       term.dispose();
     };
   }, [agentId]);
