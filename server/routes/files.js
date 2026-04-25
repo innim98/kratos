@@ -17,12 +17,16 @@ export default async function filesRoutes(app) {
   const { db } = app;
 
   const authenticate = async (request, reply) => {
+    let token;
     const authHeader = request.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return reply.code(401).send({ error: 'Unauthorized' });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    } else if (request.query.token) {
+      token = request.query.token;
     }
+    if (!token) return reply.code(401).send({ error: 'Unauthorized' });
     try {
-      request.user = app.jwt.verify(authHeader.slice(7));
+      request.user = app.jwt.verify(token);
     } catch {
       return reply.code(401).send({ error: 'Unauthorized' });
     }
@@ -112,5 +116,41 @@ export default async function filesRoutes(app) {
       size: stat.size,
       content,
     };
+  });
+
+  // Download / serve raw file (for images, binary files, etc.)
+  app.get('/api/agents/:id/files/raw', { preHandler: authenticate }, async (request, reply) => {
+    const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(request.params.id);
+    if (!agent) return reply.code(404).send({ error: 'Agent not found' });
+
+    const relPath = request.query.path || '';
+    if (!relPath) return reply.code(400).send({ error: 'path is required' });
+
+    const result = resolveAgentPath(agent, relPath);
+    if (!result) return reply.code(400).send({ error: 'Invalid path' });
+
+    const { resolved } = result;
+
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+      return reply.code(404).send({ error: 'File not found' });
+    }
+
+    const ext = path.extname(resolved).toLowerCase();
+    const mimeTypes = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon', '.bmp': 'image/bmp',
+      '.pdf': 'application/pdf',
+      '.zip': 'application/zip',
+      '.json': 'application/json',
+      '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html',
+    };
+
+    const download = request.query.download === '1';
+    reply.header('content-type', mimeTypes[ext] || 'application/octet-stream');
+    if (download) {
+      reply.header('content-disposition', `attachment; filename="${path.basename(resolved)}"`);
+    }
+    return reply.send(fs.createReadStream(resolved));
   });
 }

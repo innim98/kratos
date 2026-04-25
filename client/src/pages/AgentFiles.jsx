@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { apiFetch, getToken } from '../lib/api.js';
 import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
-import { Folder, File, ChevronRight, ArrowLeft, Upload, Home, X } from 'lucide-react';
+import { Folder, File, ChevronRight, ArrowLeft, Upload, Home, X, Download, Image } from 'lucide-react';
 
 const CODE_EXTENSIONS = new Set([
   'js', 'jsx', 'ts', 'tsx', 'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift',
@@ -12,12 +12,16 @@ const CODE_EXTENSIONS = new Set([
   'dockerfile', 'makefile', 'gitignore', 'editorconfig',
 ]);
 
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']);
+
+function getExt(name) { return name.toLowerCase().split('.').pop(); }
+
 function isViewable(name) {
-  const lower = name.toLowerCase();
-  if (CODE_EXTENSIONS.has(lower)) return true;
-  const ext = lower.split('.').pop();
-  return CODE_EXTENSIONS.has(ext);
+  const ext = getExt(name);
+  return CODE_EXTENSIONS.has(ext) || CODE_EXTENSIONS.has(name.toLowerCase());
 }
+
+function isImage(name) { return IMAGE_EXTENSIONS.has(getExt(name)); }
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -30,6 +34,7 @@ export default function AgentFiles({ agentId, onBack }) {
   const [currentPath, setCurrentPath] = useState('');
   const [rootPath, setRootPath] = useState('');
   const [viewingFile, setViewingFile] = useState(null); // { name, content, path }
+  const [viewingImage, setViewingImage] = useState(null); // { name, path, url }
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -61,9 +66,22 @@ export default function AgentFiles({ agentId, onBack }) {
       const newPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
       loadDir(newPath);
       setViewingFile(null);
+      setViewingImage(null);
+    } else if (isImage(entry.name)) {
+      const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+      const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&token=${encodeURIComponent(getToken())}`;
+      setViewingImage({ name: entry.name, path: relPath, url });
+      setViewingFile(null);
     } else if (isViewable(entry.name)) {
       readFile(currentPath ? `${currentPath}/${entry.name}` : entry.name);
+      setViewingImage(null);
     }
+  };
+
+  const handleDownload = (entry) => {
+    const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+    const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&download=1&token=${encodeURIComponent(getToken())}`;
+    window.open(url, '_blank');
   };
 
   const readFile = async (relPath) => {
@@ -140,9 +158,9 @@ export default function AgentFiles({ agentId, onBack }) {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* File list — hidden on mobile when viewing a file */}
-        {!(isMobile && viewingFile) && (
-          <div className={cn('border-r border-border overflow-y-auto', !isMobile && viewingFile ? 'w-64 min-w-64' : 'flex-1')}>
+        {/* File list — hidden on mobile when viewing a file/image */}
+        {!(isMobile && (viewingFile || viewingImage)) && (
+          <div className={cn('border-r border-border overflow-y-auto', !isMobile && (viewingFile || viewingImage) ? 'w-64 min-w-64' : 'flex-1')}>
             {currentPath && (
               <button
                 onClick={handleGoUp}
@@ -151,32 +169,36 @@ export default function AgentFiles({ agentId, onBack }) {
                 <Folder className="h-4 w-4" /> ..
               </button>
             )}
-            {entries.map(entry => (
-              <button
-                key={entry.name}
-                onClick={() => handleNavigate(entry)}
-                className={cn(
-                  'flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-accent/50 border-b border-border',
-                  viewingFile?.name === entry.name && 'bg-accent text-accent-foreground'
-                )}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {entry.type === 'directory'
-                    ? <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
-                    : <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                  }
-                  <span className="truncate">{entry.name}</span>
+            {entries.map(entry => {
+              const active = viewingFile?.name === entry.name || viewingImage?.name === entry.name;
+              return (
+                <div key={entry.name} className={cn('flex items-center border-b border-border hover:bg-accent/50', active && 'bg-accent text-accent-foreground')}>
+                  <button
+                    onClick={() => handleNavigate(entry)}
+                    className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 text-sm text-left"
+                  >
+                    {entry.type === 'directory'
+                      ? <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                      : isImage(entry.name)
+                        ? <Image className="h-4 w-4 text-muted-foreground shrink-0" />
+                        : <File className="h-4 w-4 text-muted-foreground shrink-0" />
+                    }
+                    <span className="truncate">{entry.name}</span>
+                  </button>
+                  <div className="flex items-center gap-2 px-2 shrink-0">
+                    {entry.type === 'file' && (
+                      <>
+                        <span className="text-[10px] text-muted-foreground">{formatSize(entry.size)}</span>
+                        <button onClick={() => handleDownload(entry)} className="p-0.5 text-muted-foreground hover:text-foreground" title="Download">
+                          <Download className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
+                    {entry.type === 'directory' && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 ml-2">
-                  {entry.type === 'file' && (
-                    <span className="text-[10px] text-muted-foreground">{formatSize(entry.size)}</span>
-                  )}
-                  {entry.type === 'directory' && (
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </div>
-              </button>
-            ))}
+              );
+            })}
             {entries.length === 0 && !loading && (
               <p className="text-sm text-muted-foreground p-4 text-center">Empty directory</p>
             )}
@@ -184,25 +206,34 @@ export default function AgentFiles({ agentId, onBack }) {
         )}
 
         {/* File viewer */}
-        {viewingFile && (
+        {(viewingFile || viewingImage) && (
           <div className="flex-1 flex flex-col min-w-0">
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card/50 shrink-0">
               {isMobile && (
-                <button onClick={() => setViewingFile(null)} className="mr-2 text-muted-foreground hover:text-foreground">
+                <button onClick={() => { setViewingFile(null); setViewingImage(null); }} className="mr-2 text-muted-foreground hover:text-foreground">
                   <ArrowLeft className="h-4 w-4" />
                 </button>
               )}
-              <span className="text-sm font-mono truncate flex-1">{viewingFile.path}</span>
-              <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{formatSize(viewingFile.size)}</span>
+              <span className="text-sm font-mono truncate flex-1">{viewingFile?.path || viewingImage?.path}</span>
+              {viewingFile && <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{formatSize(viewingFile.size)}</span>}
               {!isMobile && (
-                <button onClick={() => setViewingFile(null)} className="ml-2 text-muted-foreground hover:text-foreground">
+                <button onClick={() => { setViewingFile(null); setViewingImage(null); }} className="ml-2 text-muted-foreground hover:text-foreground">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-            <pre className="flex-1 overflow-auto p-4 text-sm font-mono whitespace-pre-wrap break-words bg-background">
-              {viewingFile.content}
-            </pre>
+            {viewingFile && (
+              <pre className="flex-1 overflow-auto p-4 text-sm font-mono whitespace-pre-wrap break-words bg-background">
+                {viewingFile.content}
+              </pre>
+            )}
+            {viewingImage && (
+              <div className="flex-1 overflow-auto flex items-center justify-center p-4"
+                style={{ background: 'repeating-conic-gradient(hsl(var(--muted)) 0% 25%, hsl(var(--background)) 0% 50%) 50% / 16px 16px' }}
+              >
+                <img src={viewingImage.url} alt={viewingImage.name} className="max-w-full max-h-full object-contain" />
+              </div>
+            )}
           </div>
         )}
       </div>

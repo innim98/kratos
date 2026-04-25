@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { apiFetch, getToken } from '../lib/api.js';
 import { cn } from '../lib/utils.js';
 import { Button } from './ui/button.jsx';
-import { Folder, File, ChevronRight, ArrowLeft, Upload, Home } from 'lucide-react';
+import { Folder, File, ChevronRight, ArrowLeft, Upload, Home, Download, Image } from 'lucide-react';
 
 const CODE_EXTENSIONS = new Set([
   'js', 'jsx', 'ts', 'tsx', 'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift',
@@ -12,10 +12,19 @@ const CODE_EXTENSIONS = new Set([
   'dockerfile', 'makefile', 'gitignore', 'editorconfig',
 ]);
 
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']);
+
+function getExt(name) {
+  return name.toLowerCase().split('.').pop();
+}
+
 function isViewable(name) {
-  const lower = name.toLowerCase();
-  if (CODE_EXTENSIONS.has(lower)) return true;
-  return CODE_EXTENSIONS.has(lower.split('.').pop());
+  const ext = getExt(name);
+  return CODE_EXTENSIONS.has(ext) || CODE_EXTENSIONS.has(name.toLowerCase());
+}
+
+function isImage(name) {
+  return IMAGE_EXTENSIONS.has(getExt(name));
 }
 
 function formatSize(bytes) {
@@ -27,7 +36,8 @@ function formatSize(bytes) {
 export default function FilesPanel({ agentId }) {
   const [entries, setEntries] = useState([]);
   const [currentPath, setCurrentPath] = useState('');
-  const [viewingFile, setViewingFile] = useState(null);
+  const [viewingFile, setViewingFile] = useState(null); // { name, content, path, size }
+  const [viewingImage, setViewingImage] = useState(null); // { name, path, url }
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -51,8 +61,15 @@ export default function FilesPanel({ agentId }) {
       const newPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
       loadDir(newPath);
       setViewingFile(null);
+      setViewingImage(null);
+    } else if (isImage(entry.name)) {
+      const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+      const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&token=${encodeURIComponent(getToken())}`;
+      setViewingImage({ name: entry.name, path: relPath, url });
+      setViewingFile(null);
     } else if (isViewable(entry.name)) {
       readFile(currentPath ? `${currentPath}/${entry.name}` : entry.name);
+      setViewingImage(null);
     }
   };
 
@@ -67,6 +84,13 @@ export default function FilesPanel({ agentId }) {
     parts.pop();
     loadDir(parts.join('/'));
     setViewingFile(null);
+    setViewingImage(null);
+  };
+
+  const handleDownload = (entry) => {
+    const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+    const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&download=1&token=${encodeURIComponent(getToken())}`;
+    window.open(url, '_blank');
   };
 
   const handleUpload = async (e) => {
@@ -85,20 +109,31 @@ export default function FilesPanel({ agentId }) {
     loadDir(currentPath);
   };
 
-  // Viewing a file — show viewer only (list collapsed)
-  if (viewingFile) {
+  const closeViewer = () => { setViewingFile(null); setViewingImage(null); };
+
+  // Viewing a file or image — show viewer only
+  if (viewingFile || viewingImage) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-card/50 shrink-0">
-          <button onClick={() => setViewingFile(null)} className="text-muted-foreground hover:text-foreground">
+          <button onClick={closeViewer} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-mono truncate flex-1">{viewingFile.path}</span>
-          <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(viewingFile.size)}</span>
+          <span className="text-sm font-mono truncate flex-1">{viewingFile?.path || viewingImage?.path}</span>
+          <span className="text-[10px] text-muted-foreground shrink-0">{viewingFile ? formatSize(viewingFile.size) : ''}</span>
         </div>
-        <pre className="flex-1 overflow-auto p-3 text-sm font-mono whitespace-pre-wrap break-words bg-background">
-          {viewingFile.content}
-        </pre>
+        {viewingFile && (
+          <pre className="flex-1 overflow-auto p-3 text-sm font-mono whitespace-pre-wrap break-words bg-background">
+            {viewingFile.content}
+          </pre>
+        )}
+        {viewingImage && (
+          <div className="flex-1 overflow-auto flex items-center justify-center p-4"
+            style={{ background: 'repeating-conic-gradient(hsl(var(--muted)) 0% 25%, hsl(var(--background)) 0% 50%) 50% / 16px 16px' }}
+          >
+            <img src={viewingImage.url} alt={viewingImage.name} className="max-w-full max-h-full object-contain" />
+          </div>
+        )}
       </div>
     );
   }
@@ -109,7 +144,7 @@ export default function FilesPanel({ agentId }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-border bg-card/50 shrink-0">
-        <button onClick={() => { loadDir(''); setViewingFile(null); }} className="text-xs text-muted-foreground hover:text-foreground">
+        <button onClick={() => { loadDir(''); closeViewer(); }} className="text-xs text-muted-foreground hover:text-foreground">
           <Home className="h-3.5 w-3.5" />
         </button>
         {segments.map((seg, i) => (
@@ -134,21 +169,31 @@ export default function FilesPanel({ agentId }) {
           </button>
         )}
         {entries.map(entry => (
-          <button
-            key={entry.name}
-            onClick={() => handleNavigate(entry)}
-            className="flex items-center justify-between w-full px-3 py-1.5 text-sm text-left hover:bg-accent/50 border-b border-border"
-          >
-            <div className="flex items-center gap-2 min-w-0">
+          <div key={entry.name} className="flex items-center border-b border-border hover:bg-accent/50">
+            <button
+              onClick={() => handleNavigate(entry)}
+              className="flex items-center gap-2 flex-1 min-w-0 px-3 py-1.5 text-sm text-left"
+            >
               {entry.type === 'directory'
                 ? <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                : <File className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                : isImage(entry.name)
+                  ? <Image className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  : <File className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               }
               <span className="truncate text-xs">{entry.name}</span>
+            </button>
+            <div className="flex items-center gap-1 px-2 shrink-0">
+              {entry.type === 'file' && (
+                <>
+                  <span className="text-[10px] text-muted-foreground">{formatSize(entry.size)}</span>
+                  <button onClick={(e) => { e.stopPropagation(); handleDownload(entry); }} className="p-0.5 text-muted-foreground hover:text-foreground" title="Download">
+                    <Download className="h-3 w-3" />
+                  </button>
+                </>
+              )}
+              {entry.type === 'directory' && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
             </div>
-            {entry.type === 'file' && <span className="text-[10px] text-muted-foreground shrink-0 ml-1">{formatSize(entry.size)}</span>}
-            {entry.type === 'directory' && <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-          </button>
+          </div>
         ))}
         {entries.length === 0 && !loading && (
           <p className="text-xs text-muted-foreground p-3 text-center">Empty</p>
