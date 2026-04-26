@@ -38,7 +38,12 @@ export default function AgentFiles({ agentId, onBack }) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [serverPort, setServerPort] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    apiFetch('/api/config').then(r => r.json()).then(d => { if (d.serverPort) setServerPort(d.serverPort); });
+  }, []);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -69,8 +74,7 @@ export default function AgentFiles({ agentId, onBack }) {
       setViewingImage(null);
     } else if (isImage(entry.name)) {
       const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-      const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&token=${encodeURIComponent(getToken())}`;
-      setViewingImage({ name: entry.name, path: relPath, url });
+      setViewingImage({ name: entry.name, path: relPath, url: rawUrl(relPath) });
       setViewingFile(null);
     } else if (isViewable(entry.name)) {
       readFile(currentPath ? `${currentPath}/${entry.name}` : entry.name);
@@ -78,10 +82,14 @@ export default function AgentFiles({ agentId, onBack }) {
     }
   };
 
+  const rawUrl = (relPath, download) => {
+    const base = serverPort ? `http://${window.location.hostname}:${serverPort}` : '';
+    return `${base}/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}${download ? '&download=1' : ''}&token=${encodeURIComponent(getToken())}`;
+  };
+
   const handleDownload = (entry) => {
     const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-    const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&download=1&token=${encodeURIComponent(getToken())}`;
-    window.open(url, '_blank');
+    window.open(rawUrl(relPath, true), '_blank');
   };
 
   const readFile = async (relPath) => {

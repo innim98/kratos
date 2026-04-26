@@ -40,7 +40,12 @@ export default function FilesPanel({ agentId }) {
   const [viewingImage, setViewingImage] = useState(null); // { name, path, url }
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [serverPort, setServerPort] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    apiFetch('/api/config').then(r => r.json()).then(d => { if (d.serverPort) setServerPort(d.serverPort); });
+  }, []);
 
   const loadDir = async (relPath) => {
     setLoading(true);
@@ -64,8 +69,7 @@ export default function FilesPanel({ agentId }) {
       setViewingImage(null);
     } else if (isImage(entry.name)) {
       const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-      const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&token=${encodeURIComponent(getToken())}`;
-      setViewingImage({ name: entry.name, path: relPath, url });
+      setViewingImage({ name: entry.name, path: relPath, url: rawUrl(relPath) });
       setViewingFile(null);
     } else if (isViewable(entry.name)) {
       readFile(currentPath ? `${currentPath}/${entry.name}` : entry.name);
@@ -87,10 +91,14 @@ export default function FilesPanel({ agentId }) {
     setViewingImage(null);
   };
 
+  const rawUrl = (relPath, download) => {
+    const base = serverPort ? `http://${window.location.hostname}:${serverPort}` : '';
+    return `${base}/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}${download ? '&download=1' : ''}&token=${encodeURIComponent(getToken())}`;
+  };
+
   const handleDownload = (entry) => {
     const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-    const url = `/api/agents/${agentId}/files/raw?path=${encodeURIComponent(relPath)}&download=1&token=${encodeURIComponent(getToken())}`;
-    window.open(url, '_blank');
+    window.open(rawUrl(relPath, true), '_blank');
   };
 
   const handleUpload = async (e) => {
