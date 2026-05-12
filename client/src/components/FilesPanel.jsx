@@ -33,7 +33,7 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function FilesPanel({ agentId }) {
+export default function FilesPanel({ agentId, onFileSelect }) {
   const [entries, setEntries] = useState([]);
   const [currentPath, setCurrentPath] = useState('');
   const [viewingFile, setViewingFile] = useState(null); // { name, content, path, size }
@@ -67,6 +67,14 @@ export default function FilesPanel({ agentId }) {
       loadDir(newPath);
       setViewingFile(null);
       setViewingImage(null);
+    } else if (onFileSelect) {
+      // IDE mode: emit file selection to parent
+      const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+      if (isImage(entry.name)) {
+        onFileSelect({ name: entry.name, path: relPath, isImage: true, url: rawUrl(relPath) });
+      } else if (isViewable(entry.name)) {
+        onFileSelect({ name: entry.name, path: relPath });
+      }
     } else if (isImage(entry.name)) {
       const relPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
       setViewingImage({ name: entry.name, path: relPath, url: rawUrl(relPath) });

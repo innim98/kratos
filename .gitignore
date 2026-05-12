@@ -4,6 +4,8 @@ dist/
 *.db-shm
 *.db-wal
 .env
+.claude/
 .playwright-mcp/
 *.png
+*.log
 projects/

@@ -84,15 +84,20 @@ export default async function agentRoutes(app) {
 
   app.put('/api/agents/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params;
-    const { name } = request.body || {};
-
-    if (!name) return reply.code(400).send({ error: 'name is required' });
+    const { name, issue_project } = request.body || {};
 
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
     if (!agent) return reply.code(404).send({ error: 'Agent not found' });
 
-    db.prepare('UPDATE agents SET name = ? WHERE id = ?').run(name, id);
-    return { ...agent, name };
+    if (name) {
+      db.prepare('UPDATE agents SET name = ? WHERE id = ?').run(name, id);
+    }
+    if ('issue_project' in (request.body || {})) {
+      db.prepare('UPDATE agents SET issue_project = ? WHERE id = ?').run(issue_project || null, id);
+    }
+
+    const updated = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+    return updated;
   });
 
   app.delete('/api/agents/:id', { preHandler: authenticate }, async (request, reply) => {

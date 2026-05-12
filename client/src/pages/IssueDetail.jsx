@@ -16,6 +16,7 @@ const STATUS_COLORS = {
 
 export default function IssueDetail({ issueKey, onBack }) {
   const [issue, setIssue] = useState(null);
+  const [agents, setAgents] = useState([]);
   const [commentBody, setCommentBody] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -32,6 +33,17 @@ export default function IssueDetail({ issueKey, onBack }) {
   };
 
   useEffect(load, [issueKey]);
+  useEffect(() => {
+    apiFetch('/api/agents').then(r => r.json()).then(d => { if (Array.isArray(d)) setAgents(d); });
+  }, []);
+
+  const handleAssigneeChange = async (agentId) => {
+    await apiFetch(`/api/issues/${issueKey}`, {
+      method: 'PUT',
+      body: { assignee_agent_id: agentId || null },
+    });
+    load();
+  };
 
   const handleUpload = async (e) => {
     const files = e.target.files;
@@ -92,7 +104,17 @@ export default function IssueDetail({ issueKey, onBack }) {
         <h2 className="text-xl font-semibold mb-2">{issue.title}</h2>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span>Reporter: {issue.reporter_name}</span>
-          {issue.assignee_name && <span>Assignee: {issue.assignee_name}</span>}
+          <span className="flex items-center gap-1">
+            Assignee:
+            <select
+              value={issue.assignee_agent_id || ''}
+              onChange={(e) => handleAssigneeChange(e.target.value ? Number(e.target.value) : null)}
+              className="bg-background border border-input rounded px-1.5 py-0.5 text-xs"
+            >
+              <option value="">None</option>
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </span>
           <span>{issue.created_at?.slice(0, 10)}</span>
         </div>
       </div>

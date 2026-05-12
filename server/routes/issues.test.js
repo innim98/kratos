@@ -58,12 +58,16 @@ describe('issues API', () => {
 
   it('should list issues', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/issues', headers: { authorization: `Bearer ${userToken}` } });
-    expect(JSON.parse(res.payload).length).toBe(2);
+    const body = JSON.parse(res.payload);
+    expect(body.total).toBe(2);
+    expect(body.issues.length).toBe(2);
   });
 
   it('should filter by project', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/issues?project_code=HT', headers: { authorization: `Bearer ${userToken}` } });
-    expect(JSON.parse(res.payload).length).toBe(2);
+    const body = JSON.parse(res.payload);
+    expect(body.total).toBe(2);
+    expect(body.issues.length).toBe(2);
   });
 
   it('should get issue detail', async () => {

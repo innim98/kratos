@@ -30,19 +30,38 @@ export default async function issueRoutes(app) {
 
   // List issues
   app.get('/api/issues', { preHandler: auth }, async (request) => {
-    const { project_code, status, assignee_agent_id } = request.query;
+    const { project_code, status, assignee_agent_id, q, page, limit } = request.query;
     let sql = 'SELECT * FROM issues';
+    let countSql = 'SELECT COUNT(*) as total FROM issues';
     const conditions = [];
     const params = [];
 
     if (project_code) { conditions.push('project_code = ?'); params.push(project_code); }
     if (status) { conditions.push('status = ?'); params.push(status); }
-    if (assignee_agent_id) { conditions.push('assignee_agent_id = ?'); params.push(assignee_agent_id); }
+    if (assignee_agent_id) {
+      conditions.push('(assignee_agent_id = ? OR (reporter_type = ? AND reporter_id = ?))');
+      params.push(assignee_agent_id, 'agent', assignee_agent_id);
+    }
+    if (q) {
+      conditions.push('(title LIKE ? OR description LIKE ?)');
+      params.push(`%${q}%`, `%${q}%`);
+    }
 
-    if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ' ORDER BY priority DESC, created_at DESC';
+    if (conditions.length) {
+      const where = ' WHERE ' + conditions.join(' AND ');
+      sql += where;
+      countSql += where;
+    }
+    sql += ' ORDER BY created_at DESC';
 
-    return db.prepare(sql).all(...params).map(enrichIssue);
+    const total = db.prepare(countSql).get(...params).total;
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    sql += ` LIMIT ? OFFSET ?`;
+
+    const issues = db.prepare(sql).all(...params, pageSize, (pageNum - 1) * pageSize).map(enrichIssue);
+    return { issues, total, page: pageNum, limit: pageSize };
   });
 
   // Get single issue with comments
@@ -73,6 +92,9 @@ export default async function issueRoutes(app) {
 
     const reporter = getReporter(request);
 
+    // Auto-assign to self if reporter is an agent and no explicit assignee
+    const effectiveAssignee = assignee_agent_id || (reporter.type === 'agent' ? reporter.id : null);
+
     // Get next issue number
     const last = db.prepare('SELECT MAX(issue_number) as max FROM issues WHERE project_code = ?').get(project.code);
     const issueNumber = (last?.max || 0) + 1;
@@ -80,7 +102,7 @@ export default async function issueRoutes(app) {
     const result = db.prepare(`
       INSERT INTO issues (project_code, issue_number, title, description, priority, reporter_type, reporter_id, assignee_agent_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(project.code, issueNumber, title, description || '', priority || 3, reporter.type, reporter.id, assignee_agent_id || null);
+    `).run(project.code, issueNumber, title, description || '', priority || 3, reporter.type, reporter.id, effectiveAssignee);
 
     const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(result.lastInsertRowid);
     exportIssue(db, issue);
@@ -94,7 +116,9 @@ export default async function issueRoutes(app) {
     const issue = db.prepare('SELECT * FROM issues WHERE project_code = ? AND issue_number = ?').get(code?.toUpperCase(), num);
     if (!issue) return reply.code(404).send({ error: 'Issue not found' });
 
-    const { title, description, status, priority, assignee_agent_id } = request.body || {};
+    const { title, description, status, priority } = request.body || {};
+    const hasAssignee = 'assignee_agent_id' in (request.body || {});
+    const assignee_agent_id = request.body?.assignee_agent_id;
 
     // Agents can only set completed on their own issues
     if (request.authType === 'agent' && status === 'completed') {
@@ -109,10 +133,10 @@ export default async function issueRoutes(app) {
         description = COALESCE(?, description),
         status = COALESCE(?, status),
         priority = COALESCE(?, priority),
-        assignee_agent_id = COALESCE(?, assignee_agent_id),
+        assignee_agent_id = ${hasAssignee ? '?' : 'assignee_agent_id'},
         updated_at = datetime('now')
       WHERE id = ?
-    `).run(title, description, status, priority, assignee_agent_id, issue.id);
+    `).run(...[title, description, status, priority, ...(hasAssignee ? [assignee_agent_id] : []), issue.id]);
 
     const updated = db.prepare('SELECT * FROM issues WHERE id = ?').get(issue.id);
     exportIssue(db, updated);

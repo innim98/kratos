@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '../lib/utils.js';
-import { Terminal, FolderOpen, Monitor, FileText, ListTodo } from 'lucide-react';
+import { Terminal, FolderOpen, Monitor, FileText, ListTodo, AlertCircle } from 'lucide-react';
 
 const TAB_ICONS = {
   terminal: Terminal,
@@ -8,6 +8,7 @@ const TAB_ICONS = {
   webview: Monitor,
   text: FileText,
   todos: ListTodo,
+  issues: AlertCircle,
 };
 
 const TAB_LABELS = {
@@ -16,9 +17,10 @@ const TAB_LABELS = {
   webview: 'Webview',
   text: 'Text',
   todos: 'Todos',
+  issues: 'Issues',
 };
 
-export default function PanelContent({ tabs, activeTab, onTabChange, children }) {
+export default function PanelContent({ tabs, activeTab, onTabChange, actions, children }) {
   return (
     <div className="flex flex-col h-full w-full min-h-0">
       <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-border bg-card/50 shrink-0">
@@ -39,6 +41,7 @@ export default function PanelContent({ tabs, activeTab, onTabChange, children })
             </button>
           );
         })}
+        {actions && <><span className="flex-1" />{actions}</>}
       </div>
       <div className="flex-1 min-h-0">
         {children}

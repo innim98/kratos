@@ -26,6 +26,12 @@ export default defineConfig(({ mode }) => {
         '/ws': {
           target: `ws://localhost:${serverPort}`,
           ws: true,
+          configure: (proxy) => {
+            proxy.on('error', () => {});
+            proxy.on('proxyReqWs', (proxyReq, req, socket) => {
+              socket.on('error', () => {});
+            });
+          },
         },
       },
     },

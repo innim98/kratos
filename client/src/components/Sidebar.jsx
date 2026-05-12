@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api.js';
 import { Button } from './ui/button.jsx';
 import { cn } from '../lib/utils.js';
-import { Bot, Settings, ChevronLeft, ListTodo, Network, AlertCircle } from 'lucide-react';
+import { Bot, Settings, ChevronLeft, ChevronRight, ListTodo, Network, AlertCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
-export default function Sidebar({ view, selectedAgentId, doneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues }) {
+export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, collapsed, onToggleCollapse }) {
   const [agents, setAgents] = useState([]);
 
   useEffect(() => {
@@ -17,33 +17,83 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, onSelectAge
 
   // State C: agent switcher
   if (view === 'agent-detail') {
+    // Collapsed: thin bar with expand button
+    if (collapsed) {
+      return (
+        <nav className="w-10 min-w-10 flex flex-col border-r border-border bg-card/50 items-center py-2 gap-1">
+          <button
+            onClick={onToggleCollapse}
+            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            title="Expand sidebar"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+          <div className="w-px h-3 bg-border" />
+          {agents.map(a => {
+            const isDone = doneAgents?.has(a.id);
+            const isSilentDone = silentDoneAgents?.has(a.id);
+            return (
+              <button
+                key={a.id}
+                onClick={() => onSelectAgent(a.id)}
+                className={cn(
+                  'h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold',
+                  isSilentDone && 'ring-1 ring-orange-500/50',
+                  isDone && !isSilentDone && 'ring-1 ring-emerald-500/50',
+                  a.id === selectedAgentId
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent/50 text-muted-foreground'
+                )}
+                title={a.name}
+              >
+                <span className={cn('h-2 w-2 rounded-full', isSilentDone ? 'bg-orange-400 animate-pulse' : isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+              </button>
+            );
+          })}
+        </nav>
+      );
+    }
+
+    // Expanded
     return (
       <nav className="w-52 min-w-52 flex flex-col border-r border-border bg-card/50">
-        <button
-          onClick={onGoAgents}
-          className="flex items-center gap-1 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground border-b border-border"
-        >
-          <ChevronLeft className="h-4 w-4" /> Agents
-        </button>
+        <div className="flex items-center justify-between border-b border-border">
+          <button
+            onClick={onGoAgents}
+            className="flex items-center gap-1 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" /> Agents
+          </button>
+          <button
+            onClick={onToggleCollapse}
+            className="p-1.5 mr-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            title="Collapse sidebar"
+          >
+            <PanelLeftClose className="h-3.5 w-3.5" />
+          </button>
+        </div>
 
         <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
           {agents.map(a => {
             const isDone = doneAgents?.has(a.id);
+            const isSilentDone = silentDoneAgents?.has(a.id);
             return (
               <button
                 key={a.id}
                 onClick={() => onSelectAgent(a.id)}
                 className={cn(
                   'flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm text-left',
-                  isDone && 'bg-emerald-500/10 border border-emerald-500/30',
+                  isSilentDone && 'bg-orange-500/10 border border-orange-500/30',
+                  isDone && !isSilentDone && 'bg-emerald-500/10 border border-emerald-500/30',
                   a.id === selectedAgentId
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent/50 text-muted-foreground'
                 )}
               >
-                <span className={cn('h-2 w-2 rounded-full', isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
-                <span className={cn('truncate', isDone && 'font-bold text-emerald-400')}>{a.name}</span>
-                {isDone && <span className="text-[10px] text-emerald-400 ml-auto">done</span>}
+                <span className={cn('h-2 w-2 rounded-full', isSilentDone ? 'bg-orange-400 animate-pulse' : isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+                <span className={cn('truncate', isSilentDone && 'font-bold text-orange-400', isDone && !isSilentDone && 'font-bold text-emerald-400')}>{a.name}</span>
+                {isSilentDone && <span className="text-[10px] text-orange-400 ml-auto">done</span>}
+                {isDone && !isSilentDone && <span className="text-[10px] text-emerald-400 ml-auto">done</span>}
               </button>
             );
           })}

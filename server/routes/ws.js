@@ -1,6 +1,29 @@
 import pty from 'node-pty';
 import { execSync } from 'child_process';
 
+// Track all active PTY PIDs for leak detection
+const activePtys = new Set();
+
+// Periodic cleanup: kill PTY processes that are no longer tracked
+setInterval(() => {
+  try {
+    const output = execSync("pgrep -f 'tmux attach\\|tmux new-session' || true", { encoding: 'utf8', timeout: 3000 }).trim();
+    if (!output) return;
+    const pids = output.split('\n').map(Number).filter(Boolean);
+    for (const pid of pids) {
+      if (!activePtys.has(pid)) {
+        // Orphan tmux attach process — check if parent is our server
+        try {
+          const ppid = execSync(`ps -o ppid= -p ${pid}`, { encoding: 'utf8', timeout: 1000 }).trim();
+          if (parseInt(ppid) === process.pid) {
+            process.kill(pid, 'SIGKILL');
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+}, 30000);
+
 export default async function wsRoutes(app) {
   app.get('/ws/terminal', { websocket: true, preHandler: async (request, reply) => {
     const token = request.query.token;
@@ -14,12 +37,26 @@ export default async function wsRoutes(app) {
     }
   }}, (socket, request) => {
     let ptyProcess = null;
+    let ptyPid = null;
     let attached = false;
+    let dataDisposable = null;
+    let exitDisposable = null;
 
     function cleanupPty() {
+      if (dataDisposable) { try { dataDisposable.dispose(); } catch {} dataDisposable = null; }
+      if (exitDisposable) { try { exitDisposable.dispose(); } catch {} exitDisposable = null; }
       if (ptyProcess) {
-        try { ptyProcess.kill(); } catch {}
+        const p = ptyProcess;
+        const pid = ptyPid;
         ptyProcess = null;
+        ptyPid = null;
+        if (pid) activePtys.delete(pid);
+        // destroy() closes the master FD socket AND sends SIGHUP
+        try { p.destroy(); } catch {}
+        // Force kill process after timeout as fallback
+        setTimeout(() => {
+          if (pid) { try { process.kill(pid, 'SIGKILL'); } catch {} }
+        }, 1000);
       }
       attached = false;
     }
@@ -69,17 +106,22 @@ export default async function wsRoutes(app) {
           return;
         }
 
+        ptyPid = ptyProcess.pid;
+        if (ptyPid) activePtys.add(ptyPid);
         attached = true;
 
-        ptyProcess.onData((data) => {
+        dataDisposable = ptyProcess.onData((data) => {
           if (socket.readyState === 1) {
             try { socket.send(JSON.stringify({ type: 'output', data })); } catch {}
           }
         });
 
-        ptyProcess.onExit(() => {
+        exitDisposable = ptyProcess.onExit(() => {
           attached = false;
+          if (ptyPid) { activePtys.delete(ptyPid); ptyPid = null; }
           ptyProcess = null;
+          dataDisposable = null;
+          exitDisposable = null;
           if (socket.readyState === 1) {
             try { socket.send(JSON.stringify({ type: 'session-ended' })); } catch {}
           }

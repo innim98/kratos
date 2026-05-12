@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout.jsx';
 import AgentList from './AgentList.jsx';
 import AgentDetail from './AgentDetail.jsx';
@@ -10,9 +10,40 @@ import { getToken } from '../lib/api.js';
 import { playNotificationSound, showBrowserNotification } from '../lib/notify.js';
 
 export default function Dashboard() {
-  const [view, setView] = useState('welcome');
-  const [selectedAgentId, setSelectedAgentId] = useState(null);
+  const [view, setView] = useState(() => {
+    const saved = localStorage.getItem('kratos_last_view');
+    return saved || 'welcome';
+  });
+  const [selectedAgentId, setSelectedAgentId] = useState(() => {
+    return localStorage.getItem('kratos_last_agent') || null;
+  });
   const [doneAgents, setDoneAgents] = useState(new Set());
+  const [silentDoneAgents, setSilentDoneAgents] = useState(new Set());
+  const [notifyFocusOnly, setNotifyFocusOnly] = useState(() =>
+    localStorage.getItem('kratos_notify_focus_only') === 'true'
+  );
+
+  // Refs for WS handler to access latest state
+  const selectedAgentIdRef = useRef(selectedAgentId);
+  const notifyFocusOnlyRef = useRef(notifyFocusOnly);
+  const viewRef = useRef(view);
+  useEffect(() => { selectedAgentIdRef.current = selectedAgentId; }, [selectedAgentId]);
+  useEffect(() => { notifyFocusOnlyRef.current = notifyFocusOnly; }, [notifyFocusOnly]);
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  // Persist last view and agent to localStorage
+  useEffect(() => {
+    localStorage.setItem('kratos_last_view', view);
+    if (selectedAgentId) {
+      localStorage.setItem('kratos_last_agent', selectedAgentId);
+    } else {
+      localStorage.removeItem('kratos_last_agent');
+    }
+  }, [view, selectedAgentId]);
+
+  useEffect(() => {
+    localStorage.setItem('kratos_notify_focus_only', String(notifyFocusOnly));
+  }, [notifyFocusOnly]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -37,8 +68,21 @@ export default function Dashboard() {
 
       if (msg.type === 'agent-done') {
         setDoneAgents(prev => new Set(prev).add(msg.agentId));
-        playNotificationSound();
-        showBrowserNotification('Agent Done', `${msg.agentName} has completed work`);
+        const focusOnly = notifyFocusOnlyRef.current;
+        const selectedId = selectedAgentIdRef.current;
+        const currentView = viewRef.current;
+        const shouldNotify = !focusOnly ||
+          (currentView === 'agent-detail' && msg.agentId === selectedId);
+        console.log('[notify]', {
+          agentId: msg.agentId, agentName: msg.agentName,
+          selectedId, focusOnly, currentView, shouldNotify,
+        });
+        if (shouldNotify) {
+          playNotificationSound(`agent-done:${msg.agentId}:${msg.agentName}`);
+          showBrowserNotification('Agent Done', `${msg.agentName} has completed work`);
+        } else {
+          setSilentDoneAgents(prev => new Set(prev).add(msg.agentId));
+        }
       }
     };
 
@@ -48,8 +92,12 @@ export default function Dashboard() {
   const selectAgent = (agentId) => {
     setSelectedAgentId(agentId);
     setView('agent-detail');
-    // Clear done state when user views the agent
     setDoneAgents(prev => {
+      const next = new Set(prev);
+      next.delete(agentId);
+      return next;
+    });
+    setSilentDoneAgents(prev => {
       const next = new Set(prev);
       next.delete(agentId);
       return next;
@@ -84,6 +132,9 @@ export default function Dashboard() {
       onGoPorts={goPorts}
       onGoIssues={goIssues}
       onGoMenu={goMenu}
+      silentDoneAgents={silentDoneAgents}
+      notifyFocusOnly={notifyFocusOnly}
+      onToggleNotifyFocusOnly={() => setNotifyFocusOnly(v => !v)}
     >
       {content}
     </Layout>

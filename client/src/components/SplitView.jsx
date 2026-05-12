@@ -13,21 +13,22 @@ export default function SplitView({ mode, left, right }) {
     localStorage.setItem('kratos_split_ratio', String(ratio));
   }, [ratio]);
 
+  const updateRatio = useCallback((clientX, clientY) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const newRatio = mode === 'horizontal'
+      ? (clientX - rect.left) / rect.width
+      : (clientY - rect.top) / rect.height;
+    setRatio(Math.max(0.15, Math.min(0.85, newRatio)));
+  }, [mode]);
+
   const onMouseDown = useCallback((e) => {
     e.preventDefault();
     dragging.current = true;
 
     const onMouseMove = (e) => {
-      if (!dragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-
-      let newRatio;
-      if (mode === 'horizontal') {
-        newRatio = (e.clientX - rect.left) / rect.width;
-      } else {
-        newRatio = (e.clientY - rect.top) / rect.height;
-      }
-      setRatio(Math.max(0.15, Math.min(0.85, newRatio)));
+      if (!dragging.current) return;
+      updateRatio(e.clientX, e.clientY);
     };
 
     const onMouseUp = () => {
@@ -38,7 +39,27 @@ export default function SplitView({ mode, left, right }) {
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, [mode]);
+  }, [updateRatio]);
+
+  const onTouchStart = useCallback((e) => {
+    e.preventDefault();
+    dragging.current = true;
+
+    const onTouchMove = (e) => {
+      if (!dragging.current) return;
+      const t = e.touches[0];
+      updateRatio(t.clientX, t.clientY);
+    };
+
+    const onTouchEnd = () => {
+      dragging.current = false;
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+  }, [updateRatio]);
 
   if (mode === 'terminal-only') {
     return <div className="flex-1 min-h-0">{left}</div>;
@@ -63,8 +84,9 @@ export default function SplitView({ mode, left, right }) {
 
       <div
         onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
         className={cn(
-          'shrink-0 bg-border hover:bg-ring transition-colors',
+          'shrink-0 bg-border hover:bg-ring transition-colors touch-none',
           isHorizontal ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'
         )}
       />

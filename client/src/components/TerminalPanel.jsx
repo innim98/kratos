@@ -76,11 +76,11 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
     if (text) {
       wsSend(text);
       setTimeout(() => wsSend('\r'), 50);
+      input.value = '';
+      input.focus();
     } else {
       wsSend('\r');
     }
-    input.value = '';
-    input.focus();
   };
 
   const handleInputKeyDown = (e) => {
@@ -89,6 +89,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
       handleInputSend();
     }
   };
+
 
   useEffect(() => {
     if (!containerRef.current || !agentId) return;

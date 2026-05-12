@@ -113,6 +113,7 @@ export default async function filesRoutes(app) {
     return {
       name: path.basename(resolved),
       path: relPath,
+      absolutePath: resolved,
       size: stat.size,
       content,
     };

@@ -17,13 +17,17 @@ const STATUS_COLORS = {
 const PRIORITY_LABELS = { 1: 'P1', 2: 'P2', 3: 'P3', 4: 'P4', 5: 'P5' };
 const PRIORITY_COLORS = { 5: 'bg-red-600', 4: 'bg-orange-600', 3: 'bg-yellow-600', 2: 'bg-blue-600', 1: 'bg-muted' };
 
-export default function IssueList({ onSelectIssue }) {
+export default function IssueList({ onSelectIssue, agentFilter, projectFilter }) {
   const [issues, setIssues] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [projects, setProjects] = useState([]);
   const [agents, setAgents] = useState([]);
   const [filterProject, setFilterProject] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const PAGE_SIZE = 20;
 
   // Add form
   const [projectCode, setProjectCode] = useState('');
@@ -39,13 +43,24 @@ export default function IssueList({ onSelectIssue }) {
 
   const loadIssues = () => {
     const params = [];
-    if (filterProject) params.push(`project_code=${filterProject}`);
+    if (agentFilter) params.push(`assignee_agent_id=${agentFilter}`);
+    if (projectFilter) params.push(`project_code=${projectFilter}`);
+    else if (filterProject) params.push(`project_code=${filterProject}`);
     if (filterStatus) params.push(`status=${filterStatus}`);
-    const qs = params.length ? '?' + params.join('&') : '';
-    apiFetch(`/api/issues${qs}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setIssues(d); });
+    if (search.trim()) params.push(`q=${encodeURIComponent(search.trim())}`);
+    params.push(`page=${page}`);
+    params.push(`limit=${PAGE_SIZE}`);
+    const qs = '?' + params.join('&');
+    apiFetch(`/api/issues${qs}`).then(r => r.json()).then(d => {
+      if (d.issues) { setIssues(d.issues); setTotal(d.total); }
+      else if (Array.isArray(d)) { setIssues(d); setTotal(d.length); }
+    });
   };
 
-  useEffect(loadIssues, [filterProject, filterStatus]);
+  useEffect(loadIssues, [filterProject, filterStatus, agentFilter, projectFilter, search, page]);
+  useEffect(() => { setPage(1); }, [filterProject, filterStatus, agentFilter, projectFilter, search]);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -61,16 +76,25 @@ export default function IssueList({ onSelectIssue }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <AlertCircle className="h-5 w-5" /> Issues
+          <span className="text-sm font-normal text-muted-foreground">({total})</span>
         </h2>
-        <div className="flex items-center gap-2">
-          <select value={filterProject} onChange={e => setFilterProject(e.target.value)}
-            className="h-8 px-2 text-xs rounded border border-input bg-background text-foreground">
-            <option value="">All Projects</option>
-            {projects.map(p => <option key={p.code} value={p.code}>{p.code} — {p.name}</option>)}
-          </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            placeholder="Search..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="h-8 w-40 text-xs"
+          />
+          {!projectFilter && (
+            <select value={filterProject} onChange={e => setFilterProject(e.target.value)}
+              className="h-8 px-2 text-xs rounded border border-input bg-background text-foreground">
+              <option value="">All Projects</option>
+              {projects.map(p => <option key={p.code} value={p.code}>{p.code} — {p.name}</option>)}
+            </select>
+          )}
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="h-8 px-2 text-xs rounded border border-input bg-background text-foreground">
             <option value="">All Status</option>
@@ -81,7 +105,7 @@ export default function IssueList({ onSelectIssue }) {
             <option value="completed">Completed</option>
           </select>
           <Button size="sm" onClick={() => setShowAdd(!showAdd)}>
-            <Plus className="h-4 w-4 mr-1" /> New Issue
+            <Plus className="h-4 w-4 mr-1" /> New
           </Button>
         </div>
       </div>
@@ -145,6 +169,18 @@ export default function IssueList({ onSelectIssue }) {
         })}
         {issues.length === 0 && <p className="text-center text-muted-foreground py-8">No issues</p>}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            Prev
+          </Button>
+          <span className="text-xs text-muted-foreground">{page} / {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

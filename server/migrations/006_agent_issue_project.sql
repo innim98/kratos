@@ -1,0 +1,1 @@
+ALTER TABLE agents ADD COLUMN issue_project TEXT DEFAULT NULL;
