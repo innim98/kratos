@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiFetch, getToken } from '../lib/api.js';
 import { cn } from '../lib/utils.js';
-import { Plus, ArrowLeft, Send, RefreshCw } from 'lucide-react';
+import { Plus, ArrowLeft, Send, RefreshCw, Reply } from 'lucide-react';
 
 function formatChatTime(ts) {
   if (!ts) return '';
@@ -15,6 +15,29 @@ function formatChatTime(ts) {
 }
 import { Button } from './ui/button.jsx';
 import { Input } from './ui/input.jsx';
+
+function MessageBubble({ m, onReply }) {
+  return (
+    <div className="text-sm group">
+      <div className="flex items-center gap-2">
+        <span className={cn('font-medium text-xs', m.sender_type === 'agent' ? 'text-blue-400' : 'text-foreground')}>
+          {m.sender_name}
+        </span>
+        <span className="text-[10px] text-muted-foreground">{formatChatTime(m.created_at)}</span>
+        {onReply && (
+          <button
+            onClick={onReply}
+            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+            title="Reply"
+          >
+            <Reply className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      <p className="text-sm whitespace-pre-wrap break-words mt-0.5">{m.body}</p>
+    </div>
+  );
+}
 
 export default function ChatPanel({ agentId }) {
   const [chats, setChats] = useState([]);
@@ -139,6 +162,10 @@ function ChatRoom({ chatId, agents, onBack }) {
   const [chat, setChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [replyTo, setReplyTo] = useState(null);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const lastIdRef = useRef(0);
 
@@ -160,7 +187,6 @@ function ChatRoom({ chatId, agents, onBack }) {
     loadMessages();
   }, [chatId]);
 
-  // Listen for WS chat-message events
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = getToken();
@@ -183,7 +209,6 @@ function ChatRoom({ chatId, agents, onBack }) {
     return () => { if (ws.readyState === WebSocket.OPEN) ws.close(); };
   }, [chatId]);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -193,9 +218,36 @@ function ChatRoom({ chatId, agents, onBack }) {
     if (!input.trim()) return;
     await apiFetch(`/api/chats/${chatId}/messages`, {
       method: 'POST',
-      body: { body: input.trim() },
+      body: { body: input.trim(), parent_id: replyTo?.id || null },
     });
     setInput('');
+    setReplyTo(null);
+  };
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setInput(val);
+    // Check for @ mention
+    const cursor = e.target.selectionStart;
+    const before = val.slice(0, cursor);
+    const atMatch = before.match(/@(\w*)$/);
+    if (atMatch) {
+      setMentionOpen(true);
+      setMentionFilter(atMatch[1].toLowerCase());
+    } else {
+      setMentionOpen(false);
+    }
+  };
+
+  const insertMention = (name) => {
+    const cursor = inputRef.current?.selectionStart || input.length;
+    const before = input.slice(0, cursor);
+    const after = input.slice(cursor);
+    const atIdx = before.lastIndexOf('@');
+    const newInput = before.slice(0, atIdx) + `@${name} ` + after;
+    setInput(newInput);
+    setMentionOpen(false);
+    inputRef.current?.focus();
   };
 
   const handleResendInvite = async (agentId) => {
@@ -203,6 +255,21 @@ function ChatRoom({ chatId, agents, onBack }) {
   };
 
   const agentParticipants = chat?.participants?.filter(p => p.participant_type === 'agent') || [];
+  const allParticipants = chat?.participants || [];
+
+  // Build mention candidates
+  const mentionCandidates = [{ name: 'all', type: 'special' }, ...allParticipants.map(p => ({ name: p.name, type: p.participant_type }))]
+    .filter(p => !mentionFilter || p.name.toLowerCase().includes(mentionFilter));
+
+  // Group messages: top-level + replies
+  const topMessages = messages.filter(m => !m.parent_id);
+  const replyMap = {};
+  for (const m of messages) {
+    if (m.parent_id) {
+      if (!replyMap[m.parent_id]) replyMap[m.parent_id] = [];
+      replyMap[m.parent_id].push(m);
+    }
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -215,7 +282,7 @@ function ChatRoom({ chatId, agents, onBack }) {
           <span className="text-sm font-semibold">#{chatId} {chat?.name}</span>
         </div>
         {agentParticipants.length > 0 && (
-          <div className="flex items-center gap-1 mt-1 ml-6">
+          <div className="flex items-center gap-1 mt-1 ml-6 flex-wrap">
             {agentParticipants.map(p => (
               <span key={p.participant_id} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
                 {p.name}
@@ -234,28 +301,52 @@ function ChatRoom({ chatId, agents, onBack }) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
-        {messages.map(m => (
-          <div key={m.id} className="text-sm">
-            <div className="flex items-center gap-2">
-              <span className={cn('font-medium text-xs', m.sender_type === 'agent' ? 'text-blue-400' : 'text-foreground')}>
-                {m.sender_name}
-              </span>
-              <span className="text-[10px] text-muted-foreground">{formatChatTime(m.created_at)}</span>
-            </div>
-            <p className="text-sm whitespace-pre-wrap break-words mt-0.5">{m.body}</p>
+        {topMessages.map(m => (
+          <div key={m.id}>
+            <MessageBubble m={m} onReply={() => { setReplyTo(m); inputRef.current?.focus(); }} />
+            {replyMap[m.id]?.map(r => (
+              <div key={r.id} className="ml-4 mt-1 pl-2 border-l-2 border-border">
+                <MessageBubble m={r} />
+              </div>
+            ))}
           </div>
         ))}
         <div ref={messagesEndRef} />
         {messages.length === 0 && <p className="text-center text-muted-foreground text-xs py-4">No messages yet</p>}
       </div>
 
+      {/* Reply indicator */}
+      {replyTo && (
+        <div className="flex items-center gap-2 px-3 py-1 border-t border-border bg-card/50 text-xs text-muted-foreground shrink-0">
+          <span>Replying to <strong>{replyTo.sender_name}</strong>: {replyTo.body.slice(0, 40)}</span>
+          <button onClick={() => setReplyTo(null)} className="hover:text-foreground ml-auto">✕</button>
+        </div>
+      )}
+
+      {/* Mention autocomplete */}
+      {mentionOpen && mentionCandidates.length > 0 && (
+        <div className="border-t border-border bg-card/95 max-h-32 overflow-y-auto shrink-0">
+          {mentionCandidates.map(p => (
+            <button
+              key={p.name}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => insertMention(p.name)}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent/50 text-left"
+            >
+              <span className={cn(p.type === 'agent' ? 'text-blue-400' : p.type === 'special' ? 'text-yellow-400' : 'text-foreground')}>@{p.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSend} className="flex items-center gap-1 px-2 py-1.5 border-t border-border shrink-0">
         <input
+          ref={inputRef}
           type="text"
           value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Message... (@agent-name or @all to notify)"
+          onChange={handleInputChange}
+          placeholder="Message... (@ to mention)"
           className="flex-1 min-w-0 h-7 px-2 text-sm bg-background border border-input rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
         <button type="submit" className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90">

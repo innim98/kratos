@@ -156,7 +156,7 @@ export default async function chatRoutes(app) {
   // Post message
   app.post('/api/chats/:id/messages', { preHandler: auth }, async (request, reply) => {
     const chatId = Number(request.params.id);
-    const { body } = request.body || {};
+    const { body, parent_id } = request.body || {};
     if (!body) return reply.code(400).send({ error: 'body required' });
 
     const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
@@ -165,8 +165,8 @@ export default async function chatRoutes(app) {
     const sender = getSender(request);
 
     const result = db.prepare(
-      'INSERT INTO chat_messages (chat_id, sender_type, sender_id, body) VALUES (?, ?, ?, ?)'
-    ).run(chatId, sender.type, sender.id, body);
+      'INSERT INTO chat_messages (chat_id, sender_type, sender_id, body, parent_id) VALUES (?, ?, ?, ?, ?)'
+    ).run(chatId, sender.type, sender.id, body, parent_id || null);
 
     const msg = db.prepare('SELECT * FROM chat_messages WHERE id = ?').get(result.lastInsertRowid);
     const enrichedMsg = { ...msg, sender_name: sender.name };
