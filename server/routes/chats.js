@@ -37,30 +37,33 @@ export default async function chatRoutes(app) {
     };
   }
 
+  function tmuxSendLines(session, lines) {
+    for (const line of lines) {
+      try {
+        execSync(`tmux send-keys -t ${session} ${JSON.stringify(line)} Enter`, { timeout: 3000 });
+      } catch {}
+    }
+  }
+
   function notifyAgentTmux(agentId, chatId, senderName, preview) {
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId);
     if (!agent) return;
-    const msg = `# 💬 Kratos chat #${chatId} — ${senderName}: ${preview.slice(0, 80)}`;
-    try {
-      execSync(`tmux send-keys -t ${agent.tmux_session} ${JSON.stringify(msg)} Enter`, { timeout: 3000 });
-    } catch {}
+    tmuxSendLines(agent.tmux_session, [
+      `# 💬 Kratos chat #${chatId} — ${senderName}: ${preview.slice(0, 80)}`,
+    ]);
   }
 
   function sendInvite(agentId, chatId, chatName) {
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId);
     if (!agent) return;
     const port = process.env.PORT || 15001;
-    const msg = [
+    tmuxSendLines(agent.tmux_session, [
       `# 💬 Kratos Chat #${chatId} "${chatName}" 에 초대되었습니다`,
       `# Token: ${agent.token}`,
       `# Guide: http://localhost:${port}/api/agents/${agentId}/guide`,
       `# 읽기: curl -s -H "Authorization: Bearer ${agent.token}" http://localhost:${port}/api/chats/${chatId}/messages | jq`,
       `# 쓰기: curl -s -X POST -H "Authorization: Bearer ${agent.token}" -H "Content-Type: application/json" -d '{"body":"hello"}' http://localhost:${port}/api/chats/${chatId}/messages | jq`,
-      '',
-    ].join('\n');
-    try {
-      execSync(`tmux send-keys -t ${agent.tmux_session} ${JSON.stringify(msg)} Enter`, { timeout: 3000 });
-    } catch {}
+    ]);
   }
 
   // Create chat
