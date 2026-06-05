@@ -40,7 +40,7 @@ export default async function chatRoutes(app) {
   function tmuxSendLines(session, lines) {
     for (const line of lines) {
       try {
-        execSync(`tmux send-keys -t ${session} ${JSON.stringify(line)} Enter`, { timeout: 3000 });
+        execSync(`tmux send-keys -t ${session} ${JSON.stringify(line)} Enter Enter`, { timeout: 3000 });
       } catch {}
     }
   }
