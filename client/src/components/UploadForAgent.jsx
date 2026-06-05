@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { getToken } from '../lib/api.js';
 import { cn, copyText } from '../lib/utils.js';
-import { Upload, Check, Copy } from 'lucide-react';
+import { Upload, Check, Copy, CornerDownLeft } from 'lucide-react';
 
-export default function UploadForAgent({ agentId }) {
+export default function UploadForAgent({ agentId, onSendToTerminal }) {
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [uploadedPath, setUploadedPath] = useState(null);
@@ -55,17 +55,28 @@ export default function UploadForAgent({ agentId }) {
         {uploading ? '...' : 'up4agent'}
       </button>
       {uploadedPath && (
-        <button
-          onClick={handleCopy}
-          className={cn(
-            'flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
-            copied ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+        <>
+          <button
+            onClick={handleCopy}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
+              copied ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+            )}
+            title={uploadedPath}
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            <span className="max-w-28 truncate hidden sm:inline">{uploadedPath.split('/').pop()}</span>
+          </button>
+          {onSendToTerminal && (
+            <button
+              onClick={() => onSendToTerminal(uploadedPath)}
+              className="flex items-center px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+              title="Send path to terminal"
+            >
+              <CornerDownLeft className="h-3.5 w-3.5" />
+            </button>
           )}
-          title={uploadedPath}
-        >
-          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          <span className="max-w-28 truncate">{uploadedPath.split('/').pop()}</span>
-        </button>
+        </>
       )}
     </>
   );

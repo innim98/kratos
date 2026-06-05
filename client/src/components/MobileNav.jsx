@@ -1,6 +1,6 @@
-import { ChevronLeft, Bot, Settings, ListTodo, Network, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Bot, Settings, ListTodo, Network, AlertCircle, MessageSquare } from 'lucide-react';
 
-export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoMenu, children }) {
+export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoChat, onGoMenu, children }) {
   // State A: Menu
   if (view === 'welcome') {
     return (
@@ -15,6 +15,10 @@ export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAg
         </button>
         <button onClick={onGoIssues} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card text-left">
           <div className="flex items-center gap-3"><AlertCircle className="h-5 w-5 text-muted-foreground" /><span className="font-medium">Issues</span></div>
+          <ChevronLeft className="h-4 w-4 text-muted-foreground rotate-180" />
+        </button>
+        <button onClick={onGoChat} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card text-left">
+          <div className="flex items-center gap-3"><MessageSquare className="h-5 w-5 text-muted-foreground" /><span className="font-medium">Chat</span></div>
           <ChevronLeft className="h-4 w-4 text-muted-foreground rotate-180" />
         </button>
         <button onClick={onGoPorts} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card text-left">
@@ -34,6 +38,7 @@ export default function MobileNav({ view, selectedAgentId, onSelectAgent, onGoAg
     agents: { label: 'Agents', back: onGoMenu },
     todos: { label: 'Todos', back: onGoMenu },
     issues: { label: 'Issues', back: onGoMenu },
+    chat: { label: 'Chat', back: onGoMenu },
     ports: { label: 'Ports', back: onGoMenu },
     settings: { label: 'Settings', back: onGoMenu },
     'agent-detail': { label: '', back: onGoAgents },

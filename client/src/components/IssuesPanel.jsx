@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api.js';
 import IssueList from '../pages/IssueList.jsx';
+import IssueDetail from '../pages/IssueDetail.jsx';
 
 export default function IssuesPanel({ agentId }) {
   const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null); // null = agent filter mode
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedIssue, setSelectedIssue] = useState(null);
 
   useEffect(() => {
     apiFetch('/api/projects').then(r => r.json()).then(d => { if (Array.isArray(d)) setProjects(d); });
   }, []);
 
-  // Load agent's saved issue_project
   useEffect(() => {
     apiFetch('/api/agents').then(r => r.json()).then(data => {
       if (Array.isArray(data)) {
@@ -29,6 +30,14 @@ export default function IssuesPanel({ agentId }) {
     });
   };
 
+  if (selectedIssue) {
+    return (
+      <div className="h-full overflow-y-auto p-3">
+        <IssueDetail issueKey={selectedIssue} onBack={() => setSelectedIssue(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
@@ -43,6 +52,7 @@ export default function IssuesPanel({ agentId }) {
       </div>
       <div className="flex-1 overflow-y-auto p-3">
         <IssueList
+          onSelectIssue={setSelectedIssue}
           agentFilter={selectedProject ? undefined : agentId}
           projectFilter={selectedProject || undefined}
         />

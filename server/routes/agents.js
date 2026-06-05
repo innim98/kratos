@@ -19,22 +19,27 @@ export default async function agentRoutes(app) {
   };
 
   app.get('/api/agents', { preHandler: authenticate }, async () => {
-    const agents = db.prepare('SELECT * FROM agents ORDER BY id').all();
+    const agents = db.prepare('SELECT * FROM agents ORDER BY sort_order ASC, id ASC').all();
     const live = getTmuxSessions();
+    // Clean expired locks
+    db.prepare("DELETE FROM agent_locks WHERE expires_at < datetime('now')").run();
+    const locks = db.prepare('SELECT * FROM agent_locks').all();
+    const lockMap = new Map(locks.map(l => [l.agent_id, l]));
 
     return agents.map(a => {
-      // Auto-generate token for agents that don't have one (pre-migration)
       if (!a.token) {
         a.token = crypto.randomUUID();
         db.prepare('UPDATE agents SET token = ? WHERE id = ?').run(a.token, a.id);
       }
       const ports = db.prepare('SELECT * FROM agent_ports WHERE agent_id = ? ORDER BY created_at').all(a.id);
+      const lock = lockMap.get(a.id);
       return {
         ...a,
         status: live.has(a.tmux_session) ? 'online' : 'offline',
         lastActivity: live.get(a.tmux_session)?.activity || null,
         webview: getWebview(a.id),
         ports,
+        lock: lock ? { username: lock.username, clientId: lock.client_id } : null,
       };
     });
   });
@@ -67,9 +72,10 @@ export default async function agentRoutes(app) {
 
     try {
       const agentToken = crypto.randomUUID();
+      const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM agents').get()?.m || 0;
       const result = db.prepare(
-        'INSERT INTO agents (name, tmux_session, token) VALUES (?, ?, ?)'
-      ).run(name, sessionName, agentToken);
+        'INSERT INTO agents (name, tmux_session, token, sort_order) VALUES (?, ?, ?, ?)'
+      ).run(name, sessionName, agentToken, maxOrder + 1);
       return {
         id: result.lastInsertRowid,
         name,
@@ -98,6 +104,28 @@ export default async function agentRoutes(app) {
 
     const updated = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
     return updated;
+  });
+
+  app.put('/api/agents/:id/order', { preHandler: authenticate }, async (request, reply) => {
+    if (request.user.role !== 'admin') return reply.code(403).send({ error: 'Admin only' });
+
+    const { id } = request.params;
+    const { direction } = request.body || {};
+    if (!['up', 'down'].includes(direction)) return reply.code(400).send({ error: 'direction must be up or down' });
+
+    const agents = db.prepare('SELECT id, sort_order FROM agents ORDER BY sort_order ASC, id ASC').all();
+    const idx = agents.findIndex(a => a.id === Number(id));
+    if (idx === -1) return reply.code(404).send({ error: 'Agent not found' });
+
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= agents.length) return reply.code(400).send({ error: 'Cannot move further' });
+
+    const a = agents[idx];
+    const b = agents[swapIdx];
+    db.prepare('UPDATE agents SET sort_order = ? WHERE id = ?').run(b.sort_order, a.id);
+    db.prepare('UPDATE agents SET sort_order = ? WHERE id = ?').run(a.sort_order, b.id);
+
+    return { ok: true };
   });
 
   app.delete('/api/agents/:id', { preHandler: authenticate }, async (request, reply) => {

@@ -1,6 +1,5 @@
 // Play a short notification sound using Web Audio API
-export function playNotificationSound(source) {
-  console.log('[sound]', source || 'unknown', new Error().stack?.split('\n')[2]?.trim());
+export function playNotificationSound() {
   try {
     const ctx = new AudioContext();
     const osc = ctx.createOscillator();

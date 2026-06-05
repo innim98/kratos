@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 're
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
-import { getToken } from '../lib/api.js';
+import { getToken, apiFetch } from '../lib/api.js';
 import { cn } from '../lib/utils.js';
-import { ChevronUp, Send } from 'lucide-react';
+import { ChevronUp, Send, Keyboard, History, X, Search } from 'lucide-react';
 
 const ESC = '\x1b';
 
@@ -14,6 +14,7 @@ const QUICK_KEYS = [
   { label: '^C', seq: '\x03' },
   { label: '↑', seq: ESC + '[A' },
   { label: '↓', seq: ESC + '[B' },
+  { label: 'q', seq: 'q' },
 ];
 
 const EXTRA_KEYS = [
@@ -38,6 +39,34 @@ const EXTRA_KEYS = [
   { label: '^Z', seq: '\x1a' },
 ];
 
+function formatTime(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() !== now.toDateString()) {
+    return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
+  }
+  return time;
+}
+
+function getHistory(agentId) {
+  try { return JSON.parse(localStorage.getItem(`kratos_input_history_${agentId}`)) || []; }
+  catch { return []; }
+}
+function pushHistory(agentId, text) {
+  const h = getHistory(agentId);
+  if (h.length > 0 && h[0].text === text) return;
+  h.unshift({ text, ts: Date.now() });
+  if (h.length > 500) h.length = 500;
+  localStorage.setItem(`kratos_input_history_${agentId}`, JSON.stringify(h));
+}
+function saveDraft(agentId, text) {
+  localStorage.setItem(`kratos_input_draft_${agentId}`, text);
+}
+function loadDraft(agentId) {
+  return localStorage.getItem(`kratos_input_draft_${agentId}`) || '';
+}
+
 const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const containerRef = useRef(null);
   const termRef = useRef(null);
@@ -45,6 +74,9 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const fitRef = useRef(null);
   const inputRef = useRef(null);
   const [showExtras, setShowExtras] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [showKeysOverride, setShowKeysOverride] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useImperativeHandle(ref, () => ({
@@ -74,9 +106,11 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
     if (!input) return;
     const text = input.value;
     if (text) {
+      pushHistory(agentId, text);
       wsSend(text);
       setTimeout(() => wsSend('\r'), 50);
       input.value = '';
+      saveDraft(agentId, '');
       input.focus();
     } else {
       wsSend('\r');
@@ -89,6 +123,26 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
       handleInputSend();
     }
   };
+
+  const handleInputChange = () => {
+    if (inputRef.current) saveDraft(agentId, inputRef.current.value);
+  };
+
+  // Restore draft on mount
+  useEffect(() => {
+    if (inputRef.current) inputRef.current.value = loadDraft(agentId);
+  }, [agentId]);
+
+  // Save draft on background/unload
+  useEffect(() => {
+    const save = () => { if (inputRef.current) saveDraft(agentId, inputRef.current.value); };
+    document.addEventListener('visibilitychange', save);
+    window.addEventListener('beforeunload', save);
+    return () => {
+      document.removeEventListener('visibilitychange', save);
+      window.removeEventListener('beforeunload', save);
+    };
+  }, [agentId]);
 
 
   useEffect(() => {
@@ -141,6 +195,14 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
         term.write('\r\n\x1b[90m[Session ended]\x1b[0m\r\n');
       } else if (msg.type === 'error') {
         term.write(`\r\n\x1b[31m[Error: ${msg.message}]\x1b[0m\r\n`);
+        if (msg.message?.includes('posix_spawnp')) {
+          const release = window.confirm('PTY 자원이 부족합니다. Orphan PTY를 정리할까요?');
+          if (release) {
+            apiFetch('/api/pty-release', { method: 'POST' }).then(r => r.json()).then(d => {
+              term.write(`\r\n\x1b[33m[Released ${d.released} orphan PTYs (${d.before?.serverPtmxFds} → ${d.after?.serverPtmxFds})]\x1b[0m\r\n`);
+            }).catch(() => {});
+          }
+        }
       }
     };
 
@@ -186,7 +248,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
         style={{ background: '#0a0a0a' }}
       />
 
-      {/* Extra keys panel (collapsible) */}
+      {/* Extra keys panel */}
       {showExtras && (
         <div className="flex flex-wrap gap-1 px-2 py-1.5 border-t border-border bg-card/80">
           {EXTRA_KEYS.map((k, i) =>
@@ -206,36 +268,117 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
         </div>
       )}
 
-      {/* Bottom bar: quick keys + IME input */}
-      <div className="flex items-center gap-1 px-2 py-1 border-t border-border bg-card/80 shrink-0">
-        {/* Quick keys */}
-        {QUICK_KEYS.map((k, i) => (
+      {/* Quick keys row — manually toggled */}
+      {showKeysOverride && (
+        <div className="flex items-center gap-1 px-2 py-1 border-t border-border bg-card/80 shrink-0">
+          {QUICK_KEYS.map((k, i) => (
+            <button
+              key={i}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => wsSend(k.seq)}
+              className="px-1.5 py-0.5 text-xs rounded bg-secondary text-secondary-foreground hover:bg-accent active:bg-accent/80"
+            >
+              {k.label}
+            </button>
+          ))}
           <button
-            key={i}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => wsSend(k.seq)}
-            className="px-1.5 py-0.5 text-xs rounded bg-secondary text-secondary-foreground hover:bg-accent active:bg-accent/80"
+            onClick={() => setShowExtras(v => !v)}
+            className={cn(
+              'px-1.5 py-0.5 text-xs rounded',
+              showExtras ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground hover:bg-accent'
+            )}
           >
-            {k.label}
+            <ChevronUp className={cn('h-3 w-3 transition-transform', showExtras && 'rotate-180')} />
           </button>
-        ))}
+        </div>
+      )}
+
+      {/* History panel */}
+      {showHistory && (
+        <div className="max-h-48 border-t border-border bg-card/95 flex flex-col shrink-0">
+          <div className="flex items-center gap-1 px-2 py-1 border-b border-border">
+            <Search className="h-3 w-3 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search history..."
+              value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)}
+              className="flex-1 min-w-0 h-6 px-1.5 text-xs bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
+              autoFocus
+            />
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowHistory(false); setHistorySearch(''); }} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {getHistory(agentId)
+              .filter(h => !historySearch || h.text.toLowerCase().includes(historySearch.toLowerCase()))
+              .map((h, i) => (
+                <div key={`${h.ts}-${i}`} className="flex items-center gap-1 px-2 py-1.5 hover:bg-accent/50 border-b border-border/50 text-xs">
+                  <button
+                    className="flex-1 min-w-0 text-left truncate text-foreground"
+                    onClick={() => {
+                      if (inputRef.current) { inputRef.current.value = h.text; saveDraft(agentId, h.text); }
+                      setShowHistory(false); setHistorySearch('');
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    {h.text}
+                  </button>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {formatTime(h.ts)}
+                  </span>
+                  <button
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => {
+                      const hist = getHistory(agentId).filter((_, j) => j !== i);
+                      localStorage.setItem(`kratos_input_history_${agentId}`, JSON.stringify(hist));
+                      setHistorySearch(s => s); // force re-render
+                    }}
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))
+            }
+            {getHistory(agentId).length === 0 && (
+              <p className="text-center text-muted-foreground text-xs py-4">No history</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom bar: buttons + IME input */}
+      <div className="flex items-center gap-1 px-2 py-1 border-t border-border bg-card/80 shrink-0">
         <button
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setShowExtras(v => !v)}
+          onClick={() => setShowKeysOverride(v => !v)}
           className={cn(
-            'px-1.5 py-0.5 text-xs rounded',
-            showExtras ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground hover:bg-accent'
+            'px-1.5 py-0.5 text-xs rounded flex items-center gap-0.5',
+            showKeysOverride ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground hover:bg-accent'
           )}
         >
-          <ChevronUp className={cn('h-3 w-3 transition-transform', showExtras && 'rotate-180')} />
+          <Keyboard className="h-3 w-3" />
+        </button>
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setShowHistory(v => !v)}
+          className={cn(
+            'px-1.5 py-0.5 text-xs rounded flex items-center gap-0.5',
+            showHistory ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground hover:bg-accent'
+          )}
+        >
+          <History className="h-3 w-3" />
         </button>
 
-        {/* IME input field */}
         <input
           ref={inputRef}
           type="text"
           placeholder="Input..."
           onKeyDown={handleInputKeyDown}
+          onChange={handleInputChange}
           className="flex-1 min-w-0 h-7 px-2 text-base bg-background border border-input rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
         <button

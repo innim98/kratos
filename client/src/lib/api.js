@@ -1,4 +1,18 @@
 const TOKEN_KEY = 'kratos_token';
+const CLIENT_ID_KEY = 'kratos_client_id';
+
+export function getClientId() {
+  let id = sessionStorage.getItem(CLIENT_ID_KEY);
+  if (!id) {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      id = crypto.randomUUID();
+    } else {
+      id = 'xxxx-xxxx-xxxx'.replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
+    }
+    sessionStorage.setItem(CLIENT_ID_KEY, id);
+  }
+  return id;
+}
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);

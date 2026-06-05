@@ -1,8 +1,10 @@
 import pty from 'node-pty';
 import { execSync } from 'child_process';
+import fs from 'fs';
 
-// Track all active PTY PIDs for leak detection
+// Track all active PTY PIDs and master FDs
 const activePtys = new Set();
+const activeMasterFds = new Set();
 
 // Periodic cleanup: kill PTY processes that are no longer tracked
 setInterval(() => {
@@ -24,6 +26,52 @@ setInterval(() => {
   } catch {}
 }, 30000);
 
+export function getPtyStats() {
+  const serverPid = process.pid;
+  let ptmxCount = 0;
+  try {
+    const output = execSync(`lsof -p ${serverPid} 2>/dev/null | grep ptmx | wc -l`, { encoding: 'utf8', timeout: 5000 });
+    ptmxCount = parseInt(output.trim()) || 0;
+  } catch {}
+
+  let totalPtys = 0;
+  try {
+    const output = execSync('ls /dev/ttys[0-9][0-9][0-9] 2>/dev/null | wc -l', { encoding: 'utf8', timeout: 5000 });
+    totalPtys = parseInt(output.trim()) || 0;
+  } catch {}
+
+  let ptmxMax = 0;
+  try {
+    const output = execSync('sysctl -n kern.tty.ptmx_max', { encoding: 'utf8', timeout: 3000 });
+    ptmxMax = parseInt(output.trim()) || 0;
+  } catch {}
+
+  return { serverPid, activePtys: activePtys.size, serverPtmxFds: ptmxCount, totalPtys, ptmxMax };
+}
+
+export function releaseOrphanPtys() {
+  const serverPid = process.pid;
+  let closed = 0;
+  let skipped = 0;
+  try {
+    const output = execSync(`lsof -p ${serverPid} -Fn 2>/dev/null | grep -B1 ptmx`, { encoding: 'utf8', timeout: 5000 });
+    const fds = [];
+    for (const line of output.split('\n')) {
+      if (line.startsWith('f') && /^\d+$/.test(line.slice(1))) {
+        fds.push(parseInt(line.slice(1)));
+      }
+    }
+    for (const fd of fds) {
+      if (activeMasterFds.has(fd)) {
+        skipped++;
+        continue;
+      }
+      try { fs.closeSync(fd); closed++; } catch {}
+    }
+  } catch {}
+  return { closed, skipped };
+}
+
 export default async function wsRoutes(app) {
   app.get('/ws/terminal', { websocket: true, preHandler: async (request, reply) => {
     const token = request.query.token;
@@ -38,24 +86,45 @@ export default async function wsRoutes(app) {
   }}, (socket, request) => {
     let ptyProcess = null;
     let ptyPid = null;
+    let masterFd = null;
     let attached = false;
     let dataDisposable = null;
     let exitDisposable = null;
 
-    function cleanupPty() {
+    function closeMasterFd() {
+      if (masterFd != null) {
+        const fd = masterFd;
+        masterFd = null;
+        activeMasterFds.delete(fd);
+        try {
+          fs.closeSync(fd);
+          app.log.info({ fd }, 'closeMasterFd: closed OK');
+        } catch (e) {
+          app.log.warn({ fd, err: e.message }, 'closeMasterFd: close failed');
+        }
+      }
+    }
+
+    function cleanupPty(reason) {
+      const pid = ptyPid;
+      const fd = masterFd;
+      const hadProcess = !!ptyProcess;
+      app.log.info({ reason, pid, fd, hadProcess, activePtys: activePtys.size }, 'cleanupPty called');
+
       if (dataDisposable) { try { dataDisposable.dispose(); } catch {} dataDisposable = null; }
       if (exitDisposable) { try { exitDisposable.dispose(); } catch {} exitDisposable = null; }
+      ptyPid = null;
+      if (pid) activePtys.delete(pid);
       if (ptyProcess) {
         const p = ptyProcess;
-        const pid = ptyPid;
         ptyProcess = null;
-        ptyPid = null;
-        if (pid) activePtys.delete(pid);
-        // destroy() closes the master FD socket AND sends SIGHUP
+        try { p.kill(); } catch {}
         try { p.destroy(); } catch {}
-        // Force kill process after timeout as fallback
+      }
+      closeMasterFd();
+      if (pid) {
         setTimeout(() => {
-          if (pid) { try { process.kill(pid, 'SIGKILL'); } catch {} }
+          try { process.kill(pid, 'SIGKILL'); } catch {}
         }, 1000);
       }
       attached = false;
@@ -67,7 +136,7 @@ export default async function wsRoutes(app) {
 
       if (msg.type === 'attach') {
         // Kill previous PTY if re-attaching
-        cleanupPty();
+        cleanupPty('re-attach');
 
         const { db } = app;
         const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(msg.agentId);
@@ -107,7 +176,10 @@ export default async function wsRoutes(app) {
         }
 
         ptyPid = ptyProcess.pid;
+        masterFd = ptyProcess._fd;
+        app.log.info({ pid: ptyPid, _fd: masterFd, masterProp: ptyProcess.master?.fd, keys: Object.keys(ptyProcess).join(',') }, 'PTY spawned');
         if (ptyPid) activePtys.add(ptyPid);
+        if (masterFd != null) activeMasterFds.add(masterFd);
         attached = true;
 
         dataDisposable = ptyProcess.onData((data) => {
@@ -117,11 +189,13 @@ export default async function wsRoutes(app) {
         });
 
         exitDisposable = ptyProcess.onExit(() => {
+          app.log.info({ pid: ptyPid, fd: masterFd, activePtys: activePtys.size }, 'pty onExit fired');
           attached = false;
           if (ptyPid) { activePtys.delete(ptyPid); ptyPid = null; }
           ptyProcess = null;
           dataDisposable = null;
           exitDisposable = null;
+          closeMasterFd();
           if (socket.readyState === 1) {
             try { socket.send(JSON.stringify({ type: 'session-ended' })); } catch {}
           }
@@ -142,12 +216,12 @@ export default async function wsRoutes(app) {
       }
 
       if (msg.type === 'detach') {
-        cleanupPty();
+        cleanupPty('detach');
         return;
       }
     });
 
-    socket.on('close', () => { cleanupPty(); });
-    socket.on('error', () => { cleanupPty(); });
+    socket.on('close', () => { cleanupPty('ws-close'); });
+    socket.on('error', () => { cleanupPty('ws-error'); });
   });
 }

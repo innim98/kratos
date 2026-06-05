@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Badge } from '../components/ui/badge.jsx';
 import { cn } from '../lib/utils.js';
-import { Plus, Check, Circle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Check, Circle, Clock, X } from 'lucide-react';
 
 const STATUS_ICONS = {
   pending: Circle,
@@ -27,7 +27,9 @@ export default function TodoList({ agentFilter }) {
   const [todos, setTodos] = useState([]);
   const [agents, setAgents] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'completed'
+  const [filter, setFilter] = useState('all');
+  const [editingId, setEditingId] = useState(null);
+  const [editFields, setEditFields] = useState({});
 
   // Add form
   const [title, setTitle] = useState('');
@@ -85,6 +87,39 @@ export default function TodoList({ agentFilter }) {
   const handleDelete = async (id) => {
     await apiFetch(`/api/todos/${id}`, { method: 'DELETE' });
     loadTodos();
+  };
+
+  const startEdit = (todo) => {
+    setEditingId(todo.id);
+    setEditFields({
+      title: todo.title,
+      description: todo.description || '',
+      priority: todo.priority,
+      status: todo.status,
+      due_date: todo.due_date || '',
+      agent_id: todo.agent_id || '',
+    });
+  };
+
+  const handleEditSave = async () => {
+    await apiFetch(`/api/todos/${editingId}`, {
+      method: 'PUT',
+      body: {
+        title: editFields.title,
+        description: editFields.description,
+        priority: editFields.priority,
+        status: editFields.status,
+        due_date: editFields.due_date || null,
+        agent_id: editFields.agent_id ? Number(editFields.agent_id) : null,
+      },
+    });
+    setEditingId(null);
+    loadTodos();
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEditSave(); }
+    if (e.key === 'Escape') setEditingId(null);
   };
 
   const nextStatus = (status) => {
@@ -159,6 +194,59 @@ export default function TodoList({ agentFilter }) {
         {todos.map(todo => {
           const StatusIcon = STATUS_ICONS[todo.status];
           const agentName = agents.find(a => a.id === todo.agent_id)?.name;
+          const isEditing = editingId === todo.id;
+
+          if (isEditing) {
+            return (
+              <div key={todo.id} className="px-3 py-3 rounded-lg border border-ring bg-card space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-muted-foreground shrink-0">K-{todo.id}</span>
+                  <Input
+                    value={editFields.title}
+                    onChange={e => setEditFields({ ...editFields, title: e.target.value })}
+                    onKeyDown={handleEditKeyDown}
+                    className="h-7 text-sm flex-1"
+                    autoFocus
+                  />
+                </div>
+                <textarea
+                  value={editFields.description}
+                  onChange={e => setEditFields({ ...editFields, description: e.target.value })}
+                  onKeyDown={handleEditKeyDown}
+                  placeholder="Description"
+                  className="w-full h-16 px-2 py-1.5 text-xs rounded-md border border-input bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select value={editFields.status} onChange={e => setEditFields({ ...editFields, status: e.target.value })}
+                    className="h-7 px-1.5 text-xs rounded border border-input bg-background text-foreground">
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                  <select value={editFields.priority} onChange={e => setEditFields({ ...editFields, priority: Number(e.target.value) })}
+                    className="h-7 px-1.5 text-xs rounded border border-input bg-background text-foreground">
+                    <option value={5}>P5</option><option value={4}>P4</option>
+                    <option value={3}>P3</option><option value={2}>P2</option><option value={1}>P1</option>
+                  </select>
+                  <Input type="date" value={editFields.due_date} onChange={e => setEditFields({ ...editFields, due_date: e.target.value })}
+                    className="h-7 w-auto text-xs" />
+                  <select value={editFields.agent_id} onChange={e => setEditFields({ ...editFields, agent_id: e.target.value })}
+                    className="h-7 px-1.5 text-xs rounded border border-input bg-background text-foreground">
+                    <option value="">No agent</option>
+                    {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                  <span className="flex-1" />
+                  <Button size="sm" className="h-7 text-xs" onClick={handleEditSave}>
+                    <Check className="h-3 w-3 mr-1" /> Save
+                  </Button>
+                  <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div key={todo.id} className="flex items-start gap-3 px-3 py-2.5 rounded-lg border border-border bg-card hover:border-accent/50">
               <button
@@ -168,7 +256,7 @@ export default function TodoList({ agentFilter }) {
               >
                 <StatusIcon className="h-4 w-4" />
               </button>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => startEdit(todo)}>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono text-muted-foreground shrink-0">K-{todo.id}</span>
                   <span className={cn('text-sm', todo.status === 'completed' && 'line-through text-muted-foreground')}>

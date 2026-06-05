@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '../lib/utils.js';
-import { Terminal, FolderOpen, Monitor, FileText, ListTodo, AlertCircle } from 'lucide-react';
+import { Terminal, FolderOpen, Monitor, FileText, ListTodo, AlertCircle, MessageSquare } from 'lucide-react';
 
 const TAB_ICONS = {
   terminal: Terminal,
@@ -9,6 +9,7 @@ const TAB_ICONS = {
   text: FileText,
   todos: ListTodo,
   issues: AlertCircle,
+  chat: MessageSquare,
 };
 
 const TAB_LABELS = {
@@ -18,6 +19,7 @@ const TAB_LABELS = {
   text: 'Text',
   todos: 'Todos',
   issues: 'Issues',
+  chat: 'Chat',
 };
 
 export default function PanelContent({ tabs, activeTab, onTabChange, actions, children }) {

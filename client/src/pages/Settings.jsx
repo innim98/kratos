@@ -21,9 +21,26 @@ export default function Settings() {
   const [userMsg, setUserMsg] = useState('');
   const [userErr, setUserErr] = useState('');
 
+  const [ptyStats, setPtyStats] = useState(null);
+  const [ptyMsg, setPtyMsg] = useState('');
+
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => { if (isAdmin) loadUsers(); }, [isAdmin]);
+
+  const loadPtyStats = () => {
+    apiFetch('/api/pty-stats').then(r => r.json()).then(setPtyStats).catch(() => {});
+  };
+
+  useEffect(loadPtyStats, []);
+
+  const handlePtyRelease = async () => {
+    setPtyMsg('');
+    const res = await apiFetch('/api/pty-release', { method: 'POST' });
+    const data = await res.json();
+    setPtyMsg(`Released ${data.released} FDs (${data.before.serverPtmxFds} → ${data.after.serverPtmxFds})`);
+    loadPtyStats();
+  };
 
   const loadUsers = () => {
     apiFetch('/api/users').then(r => r.json())
@@ -125,6 +142,39 @@ export default function Settings() {
           {userErr && <p className="text-sm text-destructive">{userErr}</p>}
         </section>
       )}
+
+      <section className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">PTY Resources</h3>
+          <Button variant="outline" size="sm" onClick={loadPtyStats}>Refresh</Button>
+        </div>
+        {ptyStats && (
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded border border-border p-3">
+              <div className="text-muted-foreground text-xs">System PTYs</div>
+              <div className="text-lg font-semibold">{ptyStats.totalPtys} <span className="text-xs font-normal text-muted-foreground">/ {ptyStats.ptmxMax}</span></div>
+            </div>
+            <div className="rounded border border-border p-3">
+              <div className="text-muted-foreground text-xs">Server PTY FDs</div>
+              <div className={`text-lg font-semibold ${ptyStats.serverPtmxFds > 50 ? 'text-orange-500' : ''}`}>{ptyStats.serverPtmxFds}</div>
+            </div>
+            <div className="rounded border border-border p-3">
+              <div className="text-muted-foreground text-xs">Active Connections</div>
+              <div className="text-lg font-semibold">{ptyStats.activePtys}</div>
+            </div>
+            <div className="rounded border border-border p-3">
+              <div className="text-muted-foreground text-xs">Leaked FDs</div>
+              <div className={`text-lg font-semibold ${(ptyStats.serverPtmxFds - ptyStats.activePtys) > 10 ? 'text-red-500' : 'text-emerald-500'}`}>
+                {Math.max(0, ptyStats.serverPtmxFds - ptyStats.activePtys)}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <Button variant="destructive" size="sm" onClick={handlePtyRelease}>Release Orphan PTYs</Button>
+          {ptyMsg && <span className="text-sm text-muted-foreground">{ptyMsg}</span>}
+        </div>
+      </section>
     </div>
   );
 }

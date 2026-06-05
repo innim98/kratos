@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { apiFetch } from '../lib/api.js';
+import { apiFetch, getClientId } from '../lib/api.js';
 import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import TerminalPanel from '../components/TerminalPanel.jsx';
@@ -8,6 +8,7 @@ import FilesPanel from '../components/FilesPanel.jsx';
 import TextPanel from '../components/TextPanel.jsx';
 import TodosPanel from '../components/TodosPanel.jsx';
 import IssuesPanel from '../components/IssuesPanel.jsx';
+import ChatPanel from '../components/ChatPanel.jsx';
 import PanelContent from '../components/PanelContent.jsx';
 import SplitView from '../components/SplitView.jsx';
 import FileViewer from '../components/FileViewer.jsx';
@@ -24,7 +25,7 @@ const SPLIT_MODES = [
 ];
 
 const LEFT_TABS = ['terminal', 'files', 'text'];
-const RIGHT_TABS = ['files', 'text', 'todos', 'issues'];
+const RIGHT_TABS = ['files', 'text', 'todos', 'issues', 'chat'];
 
 
 function renderPanelContent(tab, agentId, termRef, agent) {
@@ -34,6 +35,7 @@ function renderPanelContent(tab, agentId, termRef, agent) {
   if (tab === 'webview') return <WebviewPanel webview={agent?.webview} agentId={agentId} />;
   if (tab === 'todos') return <TodosPanel agentId={agentId} />;
   if (tab === 'issues') return <IssuesPanel agentId={agentId} />;
+  if (tab === 'chat') return <ChatPanel agentId={agentId} />;
   return null;
 }
 
@@ -173,7 +175,7 @@ export default function AgentDetail({ agentId }) {
 
   // Mobile
   if (isMobile) {
-    const MOBILE_TABS = ['terminal', 'files', 'text'];
+    const MOBILE_TABS = ['terminal', 'files', 'text', 'todos', 'issues', 'chat'];
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
@@ -199,7 +201,7 @@ export default function AgentDetail({ agentId }) {
           )}
         </div>
         <AgentStatusDialog agent={agent} open={statusOpen} onOpenChange={setStatusOpen} />
-        <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<UploadForAgent agentId={agentId} />}>
+        <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />}>
           {renderPanelContent(mobileTab, agentId, termRef, agent)}
         </PanelContent>
       </div>
@@ -320,7 +322,7 @@ export default function AgentDetail({ agentId }) {
                   </button>
                 ))}
                 <span className="flex-1" />
-                <UploadForAgent agentId={agentId} />
+                <UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />
               </div>
               <div className="flex-1 min-h-0">
                 {ideBottomTab === 'terminal'
@@ -336,7 +338,7 @@ export default function AgentDetail({ agentId }) {
   }
 
   // Standard 2-pane layout
-  const uploadActions = <UploadForAgent agentId={agentId} />;
+  const uploadActions = <UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />;
 
   const leftPanel = (
     <PanelContent tabs={LEFT_TABS} activeTab={leftTab} onTabChange={setLeftTab} actions={uploadActions}>

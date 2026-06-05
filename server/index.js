@@ -22,7 +22,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import agentRoutes from './routes/agents.js';
 import folderRoutes from './routes/folders.js';
-import wsRoutes from './routes/ws.js';
+import wsRoutes, { getPtyStats, releaseOrphanPtys } from './routes/ws.js';
 import webviewRoutes from './routes/webview.js';
 import webviewProxyRoutes from './routes/webview-proxy.js';
 import webviewSharedRoutes from './routes/webview-shared.js';
@@ -38,6 +38,8 @@ import projectRoutes from './routes/projects.js';
 import issueRoutes from './routes/issues.js';
 import attachmentRoutes from './routes/attachments.js';
 import guideRoutes from './routes/guide.js';
+import lockRoutes from './routes/locks.js';
+import chatRoutes from './routes/chats.js';
 import { startActivityMonitor } from './lib/activity-monitor.js';
 
 function getArg(flags) {
@@ -79,7 +81,7 @@ export async function buildServer(opts = {}) {
   });
 
   await app.register(fastifyWebsocket);
-  await app.register(fastifyMultipart);
+  await app.register(fastifyMultipart, { limits: { fileSize: 50 * 1024 * 1024 } });
   await app.register(authRoutes);
   await app.register(userRoutes);
   await app.register(agentRoutes);
@@ -100,9 +102,22 @@ export async function buildServer(opts = {}) {
   await app.register(issueRoutes);
   await app.register(attachmentRoutes);
   await app.register(guideRoutes);
+  await app.register(lockRoutes);
+  await app.register(chatRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };
+  });
+
+  app.get('/api/pty-stats', async () => {
+    return getPtyStats();
+  });
+
+  app.post('/api/pty-release', async () => {
+    const before = getPtyStats();
+    const result = releaseOrphanPtys();
+    const after = getPtyStats();
+    return { before, released: result.closed, after };
   });
 
   app.get('/api/status', async () => {

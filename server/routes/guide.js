@@ -95,6 +95,23 @@ curl -X PUT http://localhost:${port}/api/issues/<CODE>-<NUM> \\
 curl -X POST http://localhost:${port}/api/agents/${id}/upload \\
   ${authHeader} \\
   -F "files=@/path/to/file"
+
+# ═══════════════════════════════════════════
+# CHAT
+# ═══════════════════════════════════════════
+
+# List my chats
+curl -s http://localhost:${port}/api/chats ${authHeader} | jq
+
+# Read messages (use after=<last_id> for new messages only)
+curl -s http://localhost:${port}/api/chats/<CHAT_ID>/messages ${authHeader} | jq
+curl -s "http://localhost:${port}/api/chats/<CHAT_ID>/messages?after=<LAST_MSG_ID>" ${authHeader} | jq
+
+# Send message (use @agent-name or @all to notify agents)
+curl -X POST http://localhost:${port}/api/chats/<CHAT_ID>/messages \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"body": "Hello @all"}'
 `;
 
     reply.header('content-type', 'text/plain');

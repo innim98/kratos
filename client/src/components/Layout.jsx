@@ -3,7 +3,7 @@ import Header from './Header.jsx';
 import Sidebar from './Sidebar.jsx';
 import MobileNav from './MobileNav.jsx';
 
-export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoMenu, notifyFocusOnly, onToggleNotifyFocusOnly, children }) {
+export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoChat, onGoMenu, notifyFocusOnly, onToggleNotifyFocusOnly, children }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     localStorage.getItem('kratos_sidebar_collapsed') === 'true'
@@ -32,6 +32,7 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
           onGoTodos={onGoTodos}
           onGoPorts={onGoPorts}
           onGoIssues={onGoIssues}
+          onGoChat={onGoChat}
           onGoMenu={onGoMenu}
         >
           {children}
@@ -58,6 +59,7 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
           onGoTodos={onGoTodos}
           onGoPorts={onGoPorts}
           onGoIssues={onGoIssues}
+          onGoChat={onGoChat}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(c => !c)}
         />
