@@ -112,6 +112,16 @@ curl -X POST http://localhost:${port}/api/chats/<CHAT_ID>/messages \\
   ${authHeader} \\
   -H "Content-Type: application/json" \\
   -d '{"body": "Hello @all"}'
+
+# ═══════════════════════════════════════════
+# VOICE (text-to-speech reply to user)
+# ═══════════════════════════════════════════
+
+# Send voice reply (plays on user's browser via TTS)
+curl -X POST http://localhost:${port}/api/agents/${id}/voice/speak \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"text": "작업 완료했습니다"}'
 `;
 
     reply.header('content-type', 'text/plain');

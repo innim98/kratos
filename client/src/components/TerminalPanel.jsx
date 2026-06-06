@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { getToken, apiFetch } from '../lib/api.js';
 import { cn } from '../lib/utils.js';
-import { ChevronUp, Send, Keyboard, History, X, Search } from 'lucide-react';
+import { ChevronUp, Send, Keyboard, History, X, Search, Mic, MicOff, Loader2 } from 'lucide-react';
 
 const ESC = '\x1b';
 
@@ -78,6 +78,10 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const [historySearch, setHistorySearch] = useState('');
   const [showKeysOverride, setShowKeysOverride] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [recording, setRecording] = useState(false);
+  const [voiceProcessing, setVoiceProcessing] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   useImperativeHandle(ref, () => ({
     sendInput(text) {
@@ -144,6 +148,50 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
     };
   }, [agentId]);
 
+  // Voice recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setVoiceProcessing(true);
+        const formData = new FormData();
+        formData.append('files', blob, 'voice.webm');
+        try {
+          const res = await fetch(`/api/agents/${agentId}/voice`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${getToken()}` },
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.text && termRef.current) {
+            termRef.current.write(`\r\n\x1b[36m[Voice: ${data.text}]\x1b[0m\r\n`);
+          } else if (data.error) {
+            termRef.current?.write(`\r\n\x1b[31m[Voice error: ${data.error}]\x1b[0m\r\n`);
+          }
+        } catch {
+          termRef.current?.write('\r\n\x1b[31m[Voice upload failed]\x1b[0m\r\n');
+        }
+        setVoiceProcessing(false);
+      };
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setRecording(true);
+    } catch {
+      termRef.current?.write('\r\n\x1b[31m[Microphone access denied]\x1b[0m\r\n');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setRecording(false);
+  };
 
   useEffect(() => {
     if (!containerRef.current || !agentId) return;
@@ -203,6 +251,13 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
             }).catch(() => {});
           }
         }
+      } else if (msg.type === 'voice-speak') {
+        term.write(`\r\n\x1b[35m[🔊 ${msg.agentName}: ${msg.text}]\x1b[0m\r\n`);
+        try {
+          const utterance = new SpeechSynthesisUtterance(msg.text);
+          utterance.lang = 'ko-KR';
+          speechSynthesis.speak(utterance);
+        } catch {}
       }
     };
 
@@ -371,6 +426,18 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
           )}
         >
           <History className="h-3 w-3" />
+        </button>
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={recording ? stopRecording : startRecording}
+          disabled={voiceProcessing}
+          className={cn(
+            'px-1.5 py-0.5 text-xs rounded flex items-center gap-0.5',
+            recording ? 'bg-red-500 text-white animate-pulse' : voiceProcessing ? 'bg-yellow-500/20 text-yellow-500' : 'bg-secondary text-secondary-foreground hover:bg-accent'
+          )}
+          title={recording ? 'Stop recording' : voiceProcessing ? 'Processing...' : 'Voice input'}
+        >
+          {voiceProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : recording ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
         </button>
 
         <input

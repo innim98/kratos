@@ -9,3 +9,5 @@ dist/
 *.png
 *.log
 projects/
+server/bin/
+server/models/

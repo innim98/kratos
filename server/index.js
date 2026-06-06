@@ -40,6 +40,7 @@ import attachmentRoutes from './routes/attachments.js';
 import guideRoutes from './routes/guide.js';
 import lockRoutes from './routes/locks.js';
 import chatRoutes from './routes/chats.js';
+import voiceRoutes from './routes/voice.js';
 import { startActivityMonitor } from './lib/activity-monitor.js';
 
 function getArg(flags) {
@@ -104,6 +105,7 @@ export async function buildServer(opts = {}) {
   await app.register(guideRoutes);
   await app.register(lockRoutes);
   await app.register(chatRoutes);
+  await app.register(voiceRoutes);
 
   app.get('/api/config', async () => {
     return { auth: useAuth, serverPort: port };
