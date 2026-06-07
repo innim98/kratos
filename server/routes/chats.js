@@ -47,11 +47,13 @@ export default async function chatRoutes(app) {
     }
   }
 
-  function notifyAgentTmux(agentId, chatId, senderName, preview) {
+  function notifyAgentTmux(agentId, chatId, senderName, messageId) {
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId);
     if (!agent) return;
+    const port = process.env.PORT || 15001;
     tmuxSendLines(agent.tmux_session, [
-      `# 💬 Kratos chat #${chatId} — ${senderName}: ${preview.slice(0, 80)}`,
+      `# 💬 Kratos chat #${chatId} new message from ${senderName} (msg_id:${messageId})`,
+      `# Read: curl -s -H "Authorization: Bearer ${agent.token}" "http://localhost:${port}/api/chats/${chatId}/messages?after=${messageId - 1}" | jq`,
     ]);
   }
 
@@ -195,7 +197,7 @@ export default async function chatRoutes(app) {
       if (sender.type === 'agent' && sender.id === p.participant_id) continue;
 
       if (isAll || mentionedNames.has(p.agent_name.toLowerCase())) {
-        notifyAgentTmux(p.participant_id, chatId, sender.name, body);
+        notifyAgentTmux(p.participant_id, chatId, sender.name, msg.id);
       }
     }
 

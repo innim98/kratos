@@ -18,7 +18,7 @@ import { Input } from './ui/input.jsx';
 
 function MessageBubble({ m, onReply }) {
   return (
-    <div className="text-sm group">
+    <div className="text-sm group rounded-lg border border-border bg-card px-3 py-2">
       <div className="flex items-center gap-2">
         <span className={cn('font-medium text-xs', m.sender_type === 'agent' ? 'text-blue-400' : 'text-foreground')}>
           {m.sender_name}
