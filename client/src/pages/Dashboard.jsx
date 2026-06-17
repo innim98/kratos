@@ -13,19 +13,10 @@ import { playNotificationSound, showBrowserNotification } from '../lib/notify.js
 
 export default function Dashboard() {
   const [view, setView] = useState(() => {
-    if (isEmbed) {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('agent')) return 'agent-detail';
-    }
     const saved = localStorage.getItem('kratos_last_view');
     return saved || 'welcome';
   });
   const [selectedAgentId, setSelectedAgentId] = useState(() => {
-    if (isEmbed) {
-      const params = new URLSearchParams(window.location.search);
-      const agentParam = params.get('agent');
-      if (agentParam) return Number(agentParam);
-    }
     return localStorage.getItem('kratos_last_agent') || null;
   });
   const [doneAgents, setDoneAgents] = useState(new Set());

@@ -21,11 +21,48 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
   }, [sidebarCollapsed]);
 
   if (isEmbed) {
+    if (isMobile) {
+      return (
+        <div className="flex flex-col h-screen">
+          <MobileNav
+            view={view}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={onSelectAgent}
+            onGoAgents={onGoAgents}
+            onGoSettings={onGoSettings}
+            onGoTodos={onGoTodos}
+            onGoPorts={onGoPorts}
+            onGoIssues={onGoIssues}
+            onGoChat={onGoChat}
+            onGoMenu={onGoMenu}
+          >
+            {children}
+          </MobileNav>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col h-screen">
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar
+            view={view}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={onSelectAgent}
+            doneAgents={doneAgents}
+            silentDoneAgents={silentDoneAgents}
+            onGoAgents={onGoAgents}
+            onGoSettings={onGoSettings}
+            onGoTodos={onGoTodos}
+            onGoPorts={onGoPorts}
+            onGoIssues={onGoIssues}
+            onGoChat={onGoChat}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+          />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
     );
   }
