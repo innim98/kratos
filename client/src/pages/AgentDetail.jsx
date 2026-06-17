@@ -176,7 +176,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
 
   // Embed: single panel with tabs + back button
   if (isEmbed) {
-    const EMBED_TABS = ['terminal', 'files', 'text', 'todos', 'issues', 'chat'];
+    const EMBED_TABS = ['terminal', 'files', 'text'];
     const backBtn = onGoBack ? (
       <button onClick={onGoBack} className="flex items-center text-xs text-muted-foreground hover:text-foreground shrink-0">
         <ChevronLeft className="h-3.5 w-3.5" />
