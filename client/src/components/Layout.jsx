@@ -21,6 +21,18 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
   }, [sidebarCollapsed]);
 
   if (isEmbed) {
+    const isDetail = view === 'agent-detail';
+    if (isDetail) {
+      // Agent detail: no sidebar, full screen content
+      return (
+        <div className="flex flex-col h-screen">
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
+      );
+    }
+    // Other views: show navigation
     if (isMobile) {
       return (
         <div className="flex flex-col h-screen">
@@ -59,7 +71,7 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(c => !c)}
           />
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 p-6 overflow-y-auto">
             {children}
           </main>
         </div>

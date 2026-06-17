@@ -206,7 +206,7 @@ export default function Dashboard() {
 
   let content;
   if (view === 'agents') content = <AgentList onSelectAgent={selectAgent} />;
-  else if (view === 'agent-detail' && selectedAgentId) content = <AgentDetail agentId={selectedAgentId} />;
+  else if (view === 'agent-detail' && selectedAgentId) content = <AgentDetail agentId={selectedAgentId} onGoBack={goAgents} />;
   else if (view === 'todos') content = <TodoList />;
   else if (view === 'ports') content = <PortsDashboard />;
   else if (view === 'issues') content = <Issues />;

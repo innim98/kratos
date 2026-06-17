@@ -22,10 +22,11 @@ const TAB_LABELS = {
   chat: 'Chat',
 };
 
-export default function PanelContent({ tabs, activeTab, onTabChange, actions, children }) {
+export default function PanelContent({ tabs, activeTab, onTabChange, actions, leftAction, children }) {
   return (
     <div className="flex flex-col h-full w-full min-h-0">
       <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-border bg-card/50 shrink-0 overflow-x-auto">
+        {leftAction}
         {tabs.map(tab => {
           const Icon = TAB_ICONS[tab];
           const active = tab === activeTab;

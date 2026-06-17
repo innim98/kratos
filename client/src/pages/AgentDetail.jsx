@@ -16,7 +16,7 @@ import FileViewer from '../components/FileViewer.jsx';
 import UploadForAgent from '../components/UploadForAgent.jsx';
 import AgentFiles from './AgentFiles.jsx';
 import AgentStatusDialog from '../components/AgentStatusDialog.jsx';
-import { Columns2, Rows2, Square, LayoutPanelLeft, Terminal, FileText, BookOpen, FolderOpen, Pencil, Check, X } from 'lucide-react';
+import { Columns2, Rows2, Square, LayoutPanelLeft, Terminal, FileText, BookOpen, FolderOpen, Pencil, Check, X, ChevronLeft } from 'lucide-react';
 
 const SPLIT_MODES = [
   { key: 'horizontal', icon: Columns2, label: 'Side by side' },
@@ -40,7 +40,7 @@ function renderPanelContent(tab, agentId, termRef, agent) {
   return null;
 }
 
-export default function AgentDetail({ agentId }) {
+export default function AgentDetail({ agentId, onGoBack }) {
   const [agent, setAgent] = useState(null);
   const [splitMode, setSplitMode] = useState(() =>
     localStorage.getItem('kratos_split_mode') || 'horizontal'
@@ -174,12 +174,17 @@ export default function AgentDetail({ agentId }) {
     return <AgentFiles agentId={agentId} onBack={() => setShowFullFiles(false)} />;
   }
 
-  // Embed: single panel with tabs (reuses mobileTab state)
+  // Embed: single panel with tabs + back button
   if (isEmbed) {
     const EMBED_TABS = ['terminal', 'files', 'text', 'todos', 'issues', 'chat'];
+    const backBtn = onGoBack ? (
+      <button onClick={onGoBack} className="flex items-center text-xs text-muted-foreground hover:text-foreground shrink-0">
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </button>
+    ) : null;
     return (
       <div className="flex flex-col h-full">
-        <PanelContent tabs={EMBED_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />}>
+        <PanelContent tabs={EMBED_TABS} activeTab={mobileTab} onTabChange={setMobileTab} leftAction={backBtn} actions={<UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />}>
           {renderPanelContent(mobileTab, agentId, termRef, agent)}
         </PanelContent>
       </div>
