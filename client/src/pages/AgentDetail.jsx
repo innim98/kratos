@@ -174,14 +174,14 @@ export default function AgentDetail({ agentId }) {
     return <AgentFiles agentId={agentId} onBack={() => setShowFullFiles(false)} />;
   }
 
-  // Embed: single terminal view
+  // Embed: single panel with tabs (reuses mobileTab state)
   if (isEmbed) {
+    const EMBED_TABS = ['terminal', 'files', 'text', 'todos', 'issues', 'chat'];
     return (
       <div className="flex flex-col h-full">
-        <div className="px-2 py-1 border-b border-border shrink-0 text-xs text-muted-foreground">{agentId}</div>
-        <div className="flex-1 min-h-0">
-          <TerminalPanel ref={termRef} agentId={agentId} />
-        </div>
+        <PanelContent tabs={EMBED_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />}>
+          {renderPanelContent(mobileTab, agentId, termRef, agent)}
+        </PanelContent>
       </div>
     );
   }
