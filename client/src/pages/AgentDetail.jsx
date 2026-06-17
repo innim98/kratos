@@ -338,6 +338,15 @@ export default function AgentDetail({ agentId }) {
     );
   }
 
+  // Embed: single terminal view
+  if (isEmbed) {
+    return (
+      <div className="flex flex-col h-full">
+        <TerminalPanel ref={termRef} agentId={agentId} />
+      </div>
+    );
+  }
+
   // Standard 2-pane layout
   const uploadActions = <UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />;
 
