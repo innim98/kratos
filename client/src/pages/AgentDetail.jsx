@@ -174,6 +174,18 @@ export default function AgentDetail({ agentId }) {
     return <AgentFiles agentId={agentId} onBack={() => setShowFullFiles(false)} />;
   }
 
+  // Embed: single terminal view
+  if (isEmbed) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-2 py-1 border-b border-border shrink-0 text-xs text-muted-foreground">{agentId}</div>
+        <div className="flex-1 min-h-0">
+          <TerminalPanel ref={termRef} agentId={agentId} />
+        </div>
+      </div>
+    );
+  }
+
   // Mobile
   if (isMobile) {
     const MOBILE_TABS = ['terminal', 'files', 'text', 'todos', 'issues', 'chat'];
@@ -334,15 +346,6 @@ export default function AgentDetail({ agentId }) {
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Embed: single terminal view
-  if (isEmbed) {
-    return (
-      <div className="flex flex-col h-full">
-        <TerminalPanel ref={termRef} agentId={agentId} />
       </div>
     );
   }
