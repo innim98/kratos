@@ -57,7 +57,7 @@ export async function buildServer(opts = {}) {
   const port = parseInt(getArg(['--port']) || process.env.PORT || '17000', 10);
   const useAuth = hasFlag(['--auth']);
 
-  const app = Fastify({ logger: !testing });
+  const app = Fastify({ logger: !testing, bodyLimit: 4 * 1024 * 1024 * 1024 });
 
   const dbPath = testing
     ? ':memory:'
@@ -82,7 +82,7 @@ export async function buildServer(opts = {}) {
   });
 
   await app.register(fastifyWebsocket);
-  await app.register(fastifyMultipart, { limits: { fileSize: 50 * 1024 * 1024 } });
+  await app.register(fastifyMultipart, { limits: { fileSize: 4 * 1024 * 1024 * 1024 } });
   await app.register(authRoutes);
   await app.register(userRoutes);
   await app.register(agentRoutes);

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiFetch, getClientId } from '../lib/api.js';
 import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
+import { isEmbed } from '../lib/embed.js';
 import TerminalPanel from '../components/TerminalPanel.jsx';
 import WebviewPanel from '../components/WebviewPanel.jsx';
 import FilesPanel from '../components/FilesPanel.jsx';
@@ -209,7 +210,7 @@ export default function AgentDetail({ agentId }) {
   }
 
   // Desktop - shared header
-  const headerBar = (
+  const headerBar = isEmbed ? null : (
     <div className="flex items-center justify-between px-2 py-1.5 border-b border-border shrink-0">
       <div className="flex items-center gap-2">
         {editing ? (

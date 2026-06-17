@@ -8,14 +8,24 @@ import PortsDashboard from './PortsDashboard.jsx';
 import Issues from './Issues.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
 import { getToken, getClientId, apiFetch } from '../lib/api.js';
+import { isEmbed } from '../lib/embed.js';
 import { playNotificationSound, showBrowserNotification } from '../lib/notify.js';
 
 export default function Dashboard() {
   const [view, setView] = useState(() => {
+    if (isEmbed) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('agent')) return 'agent-detail';
+    }
     const saved = localStorage.getItem('kratos_last_view');
     return saved || 'welcome';
   });
   const [selectedAgentId, setSelectedAgentId] = useState(() => {
+    if (isEmbed) {
+      const params = new URLSearchParams(window.location.search);
+      const agentParam = params.get('agent');
+      if (agentParam) return Number(agentParam);
+    }
     return localStorage.getItem('kratos_last_agent') || null;
   });
   const [doneAgents, setDoneAgents] = useState(new Set());

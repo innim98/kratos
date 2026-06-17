@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Header from './Header.jsx';
 import Sidebar from './Sidebar.jsx';
 import MobileNav from './MobileNav.jsx';
+import { isEmbed } from '../lib/embed.js';
 
 export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoChat, onGoMenu, notifyFocusOnly, onToggleNotifyFocusOnly, children }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -18,6 +19,16 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
   useEffect(() => {
     localStorage.setItem('kratos_sidebar_collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  if (isEmbed) {
+    return (
+      <div className="flex flex-col h-screen">
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (
