@@ -43,6 +43,12 @@ export default function Issues() {
   const [filterStatus, setFilterStatus] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('kratos_issues_view') || 'list');
   const [selectedIssue, setSelectedIssue] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newProject, setNewProject] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newPriority, setNewPriority] = useState(3);
+  const [newAssignee, setNewAssignee] = useState('');
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -70,6 +76,18 @@ export default function Issues() {
   useEffect(() => { setPage(1); }, [filterProject, filterStatus, search]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!newProject || !newTitle.trim()) return;
+    await apiFetch('/api/issues', {
+      method: 'POST',
+      body: { project_code: newProject, title: newTitle.trim(), description: newDesc, priority: newPriority, assignee_agent_id: newAssignee ? Number(newAssignee) : null },
+    });
+    setNewTitle(''); setNewDesc(''); setNewPriority(3); setNewAssignee('');
+    setShowAdd(false);
+    loadIssues();
+  };
 
   const getKey = (issue) => `${issue.project_code}-${issue.issue_number}`;
 
@@ -100,8 +118,36 @@ export default function Issues() {
             </Button>
           ))}
         </div>
+        <Button size="sm" onClick={() => setShowAdd(!showAdd)}>
+          <Plus className="h-4 w-4 mr-1" /> Add
+        </Button>
       </div>
     </div>
+  );
+
+  const addForm = showAdd && (
+    <form onSubmit={handleAdd} className="mb-4 p-4 rounded-lg border border-border bg-card space-y-3">
+      <div className="flex gap-2">
+        <select value={newProject} onChange={e => setNewProject(e.target.value)} className="h-9 px-2 text-sm rounded border border-input bg-background text-foreground w-28">
+          <option value="">Project</option>
+          {projects.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}
+        </select>
+        <Input placeholder="Issue title" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="flex-1" autoFocus />
+      </div>
+      <textarea placeholder="Description (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)}
+        className="w-full h-20 px-3 py-2 text-sm rounded-md border border-input bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none" />
+      <div className="flex items-center gap-3 flex-wrap">
+        <select value={newPriority} onChange={e => setNewPriority(Number(e.target.value))} className="h-8 px-2 text-xs rounded border border-input bg-background text-foreground">
+          <option value={5}>P5 Critical</option><option value={4}>P4 High</option><option value={3}>P3 Medium</option><option value={2}>P2 Low</option><option value={1}>P1 Lowest</option>
+        </select>
+        <select value={newAssignee} onChange={e => setNewAssignee(e.target.value)} className="h-8 px-2 text-xs rounded border border-input bg-background text-foreground">
+          <option value="">No assignee</option>
+          {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <span className="flex-1" />
+        <Button type="submit" size="sm">Create</Button>
+      </div>
+    </form>
   );
 
   const pagination = totalPages > 1 && (
@@ -127,6 +173,7 @@ export default function Issues() {
     return (
       <div>
         {header}
+        {addForm}
         <div className="space-y-1">
           {issues.map(issue => (
             <IssueRow key={issue.id} issue={issue} onSelect={() => setSelectedIssue(getKey(issue))} />
@@ -143,6 +190,7 @@ export default function Issues() {
     return (
       <div className="flex flex-col h-full">
         {header}
+        {addForm}
         <div className="flex flex-1 min-h-0 gap-3">
           <div className="w-1/3 min-w-56 overflow-y-auto space-y-1 pr-2 border-r border-border">
             {issues.map(issue => (
@@ -162,6 +210,7 @@ export default function Issues() {
   return (
     <div className="flex flex-col h-full">
       {header}
+      {addForm}
       <div className="flex flex-1 min-h-0 gap-3">
         <div className="w-2/5 min-w-64 overflow-y-auto pr-2 border-r border-border">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-1">
