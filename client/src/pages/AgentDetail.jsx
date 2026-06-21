@@ -16,7 +16,7 @@ import FileViewer from '../components/FileViewer.jsx';
 import UploadForAgent from '../components/UploadForAgent.jsx';
 import AgentFiles from './AgentFiles.jsx';
 import AgentStatusDialog from '../components/AgentStatusDialog.jsx';
-import { Columns2, Rows2, Square, LayoutPanelLeft, Terminal, FileText, BookOpen, FolderOpen, Pencil, Check, X, ChevronLeft } from 'lucide-react';
+import { Columns2, Rows2, Square, LayoutPanelLeft, Terminal, FileText, BookOpen, FolderOpen, Pencil, Check, X, ChevronLeft, RefreshCw } from 'lucide-react';
 
 const SPLIT_MODES = [
   { key: 'horizontal', icon: Columns2, label: 'Side by side' },
@@ -29,8 +29,8 @@ const LEFT_TABS = ['terminal', 'files', 'text'];
 const RIGHT_TABS = ['files', 'text', 'todos', 'issues', 'chat'];
 
 
-function renderPanelContent(tab, agentId, termRef, agent) {
-  if (tab === 'terminal') return <TerminalPanel ref={termRef} agentId={agentId} />;
+function renderPanelContent(tab, agentId, termRef, agent, termKey) {
+  if (tab === 'terminal') return <TerminalPanel key={termKey} ref={termRef} agentId={agentId} />;
   if (tab === 'files') return <FilesPanel agentId={agentId} />;
   if (tab === 'text') return <TextPanel agentId={agentId} />;
   if (tab === 'webview') return <WebviewPanel webview={agent?.webview} agentId={agentId} />;
@@ -48,6 +48,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
   const [leftTab, setLeftTab] = useState('terminal');
   const [rightTab, setRightTab] = useState('todos');
   const [mobileTab, setMobileTab] = useState('terminal');
+  const [termKey, setTermKey] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [serverPort, setServerPort] = useState(null);
   const [showFullFiles, setShowFullFiles] = useState(false);
@@ -184,8 +185,8 @@ export default function AgentDetail({ agentId, onGoBack }) {
     ) : null;
     return (
       <div className="flex flex-col h-full">
-        <PanelContent tabs={EMBED_TABS} activeTab={mobileTab} onTabChange={setMobileTab} leftAction={backBtn} actions={<UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />}>
-          {renderPanelContent(mobileTab, agentId, termRef, agent)}
+        <PanelContent tabs={EMBED_TABS} activeTab={mobileTab} onTabChange={setMobileTab} leftAction={backBtn} actions={<><button onClick={() => setTermKey(k => k + 1)} className="flex items-center px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50" title="Reconnect terminal"><RefreshCw className="h-3.5 w-3.5" /></button><UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} /></>}>
+          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey)}
         </PanelContent>
       </div>
     );
@@ -219,8 +220,8 @@ export default function AgentDetail({ agentId, onGoBack }) {
           )}
         </div>
         <AgentStatusDialog agent={agent} open={statusOpen} onOpenChange={setStatusOpen} />
-        <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} />}>
-          {renderPanelContent(mobileTab, agentId, termRef, agent)}
+        <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<><button onClick={() => setTermKey(k => k + 1)} className="flex items-center px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50" title="Reconnect terminal"><RefreshCw className="h-3.5 w-3.5" /></button><UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} /></>}>
+          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey)}
         </PanelContent>
       </div>
     );
@@ -344,7 +345,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
               </div>
               <div className="flex-1 min-h-0">
                 {ideBottomTab === 'terminal'
-                  ? <TerminalPanel ref={termRef} agentId={agentId} />
+                  ? <TerminalPanel key={termKey} ref={termRef} agentId={agentId} />
                   : <TextPanel agentId={agentId} />
                 }
               </div>
@@ -360,13 +361,13 @@ export default function AgentDetail({ agentId, onGoBack }) {
 
   const leftPanel = (
     <PanelContent tabs={LEFT_TABS} activeTab={leftTab} onTabChange={setLeftTab} actions={uploadActions}>
-      {renderPanelContent(leftTab, agentId, termRef, agent)}
+      {renderPanelContent(leftTab, agentId, termRef, agent, termKey)}
     </PanelContent>
   );
 
   const rightPanel = (
     <PanelContent tabs={RIGHT_TABS} activeTab={rightTab} onTabChange={setRightTab}>
-      {renderPanelContent(rightTab, agentId, termRef, agent)}
+      {renderPanelContent(rightTab, agentId, termRef, agent, termKey)}
     </PanelContent>
   );
 

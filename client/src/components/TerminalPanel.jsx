@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { getToken, apiFetch } from '../lib/api.js';
 import { cn } from '../lib/utils.js';
-import { ChevronUp, Send, Keyboard, History, X, Search, Mic, MicOff, Loader2 } from 'lucide-react';
+import { ChevronUp, Send, Keyboard, History, X, Search, Mic, MicOff, Loader2, RefreshCw } from 'lucide-react';
 
 const ESC = '\x1b';
 
