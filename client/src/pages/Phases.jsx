@@ -215,7 +215,7 @@ export default function Phases() {
                 className={cn(
                   'rounded border px-2 py-1.5 text-left transition-colors',
                   STATUS_CARD_BG[phase.status],
-                  selectedPhase?.id === phase.id && 'ring-1 ring-ring'
+                  selectedPhase?.id === phase.id && 'ring-2 ring-ring border-ring'
                 )}
                 title={phase.name}
               >
