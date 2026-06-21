@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../lib/api.js';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils.js';
@@ -6,6 +6,7 @@ import { cn } from '../lib/utils.js';
 export default function TextPanel({ agentId }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const preRef = useRef(null);
 
   const loadText = useCallback(async () => {
     setLoading(true);
@@ -18,6 +19,13 @@ export default function TextPanel({ agentId }) {
   }, [agentId]);
 
   useEffect(() => { loadText(); }, [loadText]);
+
+  // Scroll to bottom when text loads
+  useEffect(() => {
+    if (preRef.current) {
+      preRef.current.scrollTop = preRef.current.scrollHeight;
+    }
+  }, [text]);
 
   return (
     <div className="flex flex-col h-full">
@@ -32,7 +40,7 @@ export default function TextPanel({ agentId }) {
           <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
         </button>
       </div>
-      <pre className="flex-1 overflow-auto p-3 text-sm md:text-sm text-xs font-mono whitespace-pre-wrap break-words bg-background select-text">
+      <pre ref={preRef} className="flex-1 overflow-auto p-3 text-sm md:text-sm text-xs font-mono whitespace-pre-wrap break-words bg-background select-text">
         {text}
       </pre>
     </div>
