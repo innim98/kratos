@@ -1,7 +1,10 @@
+import { authenticateAny } from '../lib/auth.js';
+
 export default async function projectRoutes(app) {
   const { db } = app;
+  const auth = authenticateAny(app);
 
-  const authenticate = async (request, reply) => {
+  const requireAdmin = async (request, reply) => {
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return reply.code(401).send({ error: 'Unauthorized' });
@@ -11,17 +14,12 @@ export default async function projectRoutes(app) {
     } catch {
       return reply.code(401).send({ error: 'Unauthorized' });
     }
-  };
-
-  const requireAdmin = async (request, reply) => {
-    await authenticate(request, reply);
-    if (reply.sent) return;
     if (request.user.role !== 'admin') {
       return reply.code(403).send({ error: 'Admin required' });
     }
   };
 
-  app.get('/api/projects', { preHandler: authenticate }, async () => {
+  app.get('/api/projects', { preHandler: auth }, async () => {
     return db.prepare('SELECT * FROM projects ORDER BY code').all();
   });
 
