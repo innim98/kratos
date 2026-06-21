@@ -3,11 +3,6 @@ import crypto from 'crypto';
 import { getTmuxSessions } from '../lib/tmux.js';
 import { getWebview } from './webview.js';
 
-function getTmuxCwd(sessionName) {
-  try {
-    return execSync(`tmux display-message -t ${sessionName} -p '#{pane_current_path}'`, { encoding: 'utf8', timeout: 3000 }).trim();
-  } catch { return null; }
-}
 
 export default async function agentRoutes(app) {
   const { db } = app;
@@ -39,13 +34,10 @@ export default async function agentRoutes(app) {
       }
       const ports = db.prepare('SELECT * FROM agent_ports WHERE agent_id = ? ORDER BY created_at').all(a.id);
       const lock = lockMap.get(a.id);
-      const isOnline = live.has(a.tmux_session);
-      const cwd = isOnline ? getTmuxCwd(a.tmux_session) : null;
       return {
         ...a,
-        status: isOnline ? 'online' : 'offline',
+        status: live.has(a.tmux_session) ? 'online' : 'offline',
         lastActivity: live.get(a.tmux_session)?.activity || null,
-        cwd,
         webview: getWebview(a.id),
         ports,
         lock: lock ? { username: lock.username, clientId: lock.client_id } : null,
@@ -83,8 +75,8 @@ export default async function agentRoutes(app) {
       const agentToken = crypto.randomUUID();
       const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM agents').get()?.m || 0;
       const result = db.prepare(
-        'INSERT INTO agents (name, tmux_session, token, sort_order) VALUES (?, ?, ?, ?)'
-      ).run(name, sessionName, agentToken, maxOrder + 1);
+        'INSERT INTO agents (name, tmux_session, token, sort_order, folder) VALUES (?, ?, ?, ?, ?)'
+      ).run(name, sessionName, agentToken, maxOrder + 1, folder || null);
       return {
         id: result.lastInsertRowid,
         name,

@@ -42,11 +42,11 @@ export default function AgentList({ onSelectAgent }) {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  // Group agents by cwd folder for grid view
+  // Group agents by registered folder
   const groupedByFolder = () => {
     const groups = {};
     for (const a of agents) {
-      const folder = a.cwd || 'unknown';
+      const folder = a.folder || 'other';
       if (!groups[folder]) groups[folder] = [];
       groups[folder].push(a);
     }
