@@ -8,6 +8,7 @@ import PortsDashboard from './PortsDashboard.jsx';
 import Issues from './Issues.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
 import Phases from './Phases.jsx';
+import Home from './Home.jsx';
 import { getToken, getClientId, apiFetch } from '../lib/api.js';
 import { isEmbed } from '../lib/embed.js';
 import { playNotificationSound, showBrowserNotification } from '../lib/notify.js';
@@ -215,7 +216,7 @@ export default function Dashboard() {
   else if (view === 'chat') content = <ChatPanel />;
   else if (view === 'phases') content = <Phases />;
   else if (view === 'settings') content = <Settings />;
-  else content = <div className="flex items-center justify-center h-full text-muted-foreground text-lg">Welcome to Kratos</div>;
+  else content = <Home onSelectAgent={selectAgent} onGoTodos={goTodos} onGoIssues={goIssues} onGoPhases={goPhases} />;
 
   return (
     <Layout

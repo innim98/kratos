@@ -84,7 +84,7 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen">
-        <Header notifyFocusOnly={notifyFocusOnly} onToggleNotifyFocusOnly={onToggleNotifyFocusOnly} />
+        <Header notifyFocusOnly={notifyFocusOnly} onToggleNotifyFocusOnly={onToggleNotifyFocusOnly} onGoHome={onGoMenu} />
         <MobileNav
           view={view}
           selectedAgentId={selectedAgentId}
@@ -109,7 +109,7 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
 
   return (
     <div className="flex flex-col h-screen">
-      <Header notifyFocusOnly={notifyFocusOnly} onToggleNotifyFocusOnly={onToggleNotifyFocusOnly} />
+      <Header notifyFocusOnly={notifyFocusOnly} onToggleNotifyFocusOnly={onToggleNotifyFocusOnly} onGoHome={onGoMenu} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           view={view}

@@ -3,12 +3,12 @@ import { Button } from './ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import { LogOut, BellRing } from 'lucide-react';
 
-export default function Header({ notifyFocusOnly, onToggleNotifyFocusOnly }) {
+export default function Header({ notifyFocusOnly, onToggleNotifyFocusOnly, onGoHome }) {
   const { user, logout } = useAuth();
 
   return (
     <header className="flex items-center justify-between h-12 px-4 border-b border-border bg-card">
-      <span className="text-lg font-bold text-primary">Kratos</span>
+      <button onClick={onGoHome} className="text-lg font-bold text-primary hover:opacity-80 transition-opacity">Kratos</button>
       {user && (
         <div className="flex items-center gap-3">
           <button

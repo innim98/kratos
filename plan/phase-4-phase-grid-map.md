@@ -111,3 +111,4 @@ GET    /api/agents/:agentId/files/read?path=<doc_path>  → 기존 API 재사용
 ## Questions
 
 - (답변 대기 중)
+\n\n## Status: DONE (2026-06-21)

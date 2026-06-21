@@ -129,6 +129,37 @@ export async function buildServer(opts = {}) {
     return { hasUsers: count > 0 };
   });
 
+  app.get('/api/dashboard', async (request, reply) => {
+    const { getTmuxSessions } = await import('./lib/tmux.js');
+    const live = getTmuxSessions();
+    const allAgents = db.prepare('SELECT * FROM agents ORDER BY sort_order ASC, id ASC').all();
+    const onlineCount = allAgents.filter(a => live.has(a.tmux_session)).length;
+    const topAgents = allAgents.slice(0, 4).map(a => ({
+      id: a.id, name: a.name, status: live.has(a.tmux_session) ? 'online' : 'offline',
+      lastActivity: live.get(a.tmux_session)?.activity || null,
+    }));
+
+    const pendingTodos = db.prepare("SELECT COUNT(*) as c FROM todos WHERE status IN ('pending','in_progress')").get().c;
+    const oldTodos = db.prepare("SELECT * FROM todos WHERE status IN ('pending','in_progress') ORDER BY created_at ASC LIMIT 5").all();
+
+    const openIssues = db.prepare("SELECT COUNT(*) as c FROM issues WHERE status IN ('pending','todo','inprogress','verification')").get().c;
+    const oldIssues = db.prepare("SELECT * FROM issues WHERE status IN ('pending','todo','inprogress','verification') ORDER BY created_at ASC LIMIT 5").all();
+
+    const projects = db.prepare('SELECT DISTINCT project_code FROM phases').all();
+    const oldPhases = [];
+    for (const p of projects) {
+      const phase = db.prepare("SELECT * FROM phases WHERE project_code = ? AND status = 'active' ORDER BY sort_order ASC, id ASC LIMIT 1").get(p.project_code);
+      if (phase) oldPhases.push(phase);
+    }
+
+    return {
+      agents: { online: onlineCount, total: allAgents.length, top: topAgents },
+      todos: { open: pendingTodos, oldest: oldTodos },
+      issues: { open: openIssues, oldest: oldIssues },
+      phases: oldPhases,
+    };
+  });
+
   if (!testing) {
     // Backfill folder for existing agents from tmux cwd
     try {
