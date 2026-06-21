@@ -7,6 +7,7 @@ import TodoList from './TodoList.jsx';
 import PortsDashboard from './PortsDashboard.jsx';
 import Issues from './Issues.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
+import Phases from './Phases.jsx';
 import { getToken, getClientId, apiFetch } from '../lib/api.js';
 import { isEmbed } from '../lib/embed.js';
 import { playNotificationSound, showBrowserNotification } from '../lib/notify.js';
@@ -191,6 +192,7 @@ export default function Dashboard() {
   const goPorts = () => { leaveAgent(); setView('ports'); };
   const goIssues = () => { leaveAgent(); setView('issues'); };
   const goChat = () => { leaveAgent(); setView('chat'); };
+  const goPhases = () => { leaveAgent(); setView('phases'); };
   const goMenu = () => { leaveAgent(); setView('welcome'); };
 
   // Handle lock-stolen: show alert and go back to agent list
@@ -211,6 +213,7 @@ export default function Dashboard() {
   else if (view === 'ports') content = <PortsDashboard />;
   else if (view === 'issues') content = <Issues />;
   else if (view === 'chat') content = <ChatPanel />;
+  else if (view === 'phases') content = <Phases />;
   else if (view === 'settings') content = <Settings />;
   else content = <div className="flex items-center justify-center h-full text-muted-foreground text-lg">Welcome to Kratos</div>;
 
@@ -226,6 +229,7 @@ export default function Dashboard() {
       onGoPorts={goPorts}
       onGoIssues={goIssues}
       onGoChat={goChat}
+      onGoPhases={goPhases}
       onGoMenu={goMenu}
       silentDoneAgents={silentDoneAgents}
       notifyFocusOnly={notifyFocusOnly}
