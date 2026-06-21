@@ -3,6 +3,7 @@ import { apiFetch, getToken } from '../lib/api.js';
 import { cn } from '../lib/utils.js';
 import { Button } from './ui/button.jsx';
 import { Folder, File, ChevronRight, ArrowLeft, Upload, Home, Download, Image } from 'lucide-react';
+import MarkdownViewer from './MarkdownViewer.jsx';
 
 const CODE_EXTENSIONS = new Set([
   'js', 'jsx', 'ts', 'tsx', 'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift',
@@ -138,7 +139,12 @@ export default function FilesPanel({ agentId, onFileSelect }) {
           <span className="text-sm font-mono truncate flex-1">{viewingFile?.path || viewingImage?.path}</span>
           <span className="text-[10px] text-muted-foreground shrink-0">{viewingFile ? formatSize(viewingFile.size) : ''}</span>
         </div>
-        {viewingFile && (
+        {viewingFile && viewingFile.path?.endsWith('.md') && (
+          <div className="flex-1 overflow-auto p-4 bg-background">
+            <MarkdownViewer content={viewingFile.content} />
+          </div>
+        )}
+        {viewingFile && !viewingFile.path?.endsWith('.md') && (
           <pre className="flex-1 overflow-auto p-3 text-sm font-mono whitespace-pre-wrap break-words bg-background">
             {viewingFile.content}
           </pre>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../lib/api.js';
 import { cn, copyText } from '../lib/utils.js';
 import { FileText, Image, X, Check } from 'lucide-react';
+import MarkdownViewer from './MarkdownViewer.jsx';
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -74,6 +75,10 @@ export default function FileViewer({ agentId, file, onClose }) {
         </div>
       ) : content == null ? (
         <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
+      ) : file.path?.endsWith('.md') ? (
+        <div className="flex-1 overflow-auto p-4 bg-background">
+          <MarkdownViewer content={content} />
+        </div>
       ) : (
         <div className="flex-1 overflow-auto bg-background">
           <table className="text-sm font-mono border-collapse w-full">
