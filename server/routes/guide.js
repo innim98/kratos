@@ -122,6 +122,25 @@ curl -X POST http://localhost:${port}/api/agents/${id}/voice/speak \\
   ${authHeader} \\
   -H "Content-Type: application/json" \\
   -d '{"text": "작업 완료했습니다"}'
+
+# ═══════════════════════════════════════════
+# PHASES (project phase documents)
+# ═══════════════════════════════════════════
+
+# List phases
+curl -s "http://localhost:${port}/api/phases?project_code=<CODE>" ${authHeader} | jq
+
+# Register a document to a phase (status: active/draft/done/deprecated)
+curl -X POST http://localhost:${port}/api/phases/<PHASE_ID>/documents \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"title": "Implementation Log", "doc_path": "docs/phase-1.md", "status": "active"}'
+
+# Update document status or path
+curl -X PUT http://localhost:${port}/api/phase-documents/<DOC_ID> \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"status": "done"}'
 `;
 
     reply.header('content-type', 'text/plain');
