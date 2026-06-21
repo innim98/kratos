@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Badge } from '../components/ui/badge.jsx';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, FolderPlus } from 'lucide-react';
 
 export default function Settings() {
   const { user, updateUser } = useAuth();
@@ -21,12 +21,39 @@ export default function Settings() {
   const [userMsg, setUserMsg] = useState('');
   const [userErr, setUserErr] = useState('');
 
+  const [projects, setProjects] = useState([]);
+  const [newCode, setNewCode] = useState('');
+  const [newProjName, setNewProjName] = useState('');
+  const [newFolder, setNewFolder] = useState('');
+  const [projMsg, setProjMsg] = useState('');
+  const [projErr, setProjErr] = useState('');
+
   const [ptyStats, setPtyStats] = useState(null);
   const [ptyMsg, setPtyMsg] = useState('');
 
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => { if (isAdmin) loadUsers(); }, [isAdmin]);
+
+  const loadProjects = () => {
+    apiFetch('/api/projects').then(r => r.json()).then(d => { if (Array.isArray(d)) setProjects(d); });
+  };
+
+  useEffect(() => { if (isAdmin) loadProjects(); }, [isAdmin]);
+
+  const handleAddProject = async (e) => {
+    e.preventDefault(); setProjMsg(''); setProjErr('');
+    if (!newCode.trim() || !newProjName.trim() || !newFolder.trim()) { setProjErr('All fields required'); return; }
+    const res = await apiFetch('/api/projects', { method: 'POST', body: { code: newCode.trim().toUpperCase(), name: newProjName.trim(), folder: newFolder.trim() } });
+    if (res.ok) { setNewCode(''); setNewProjName(''); setNewFolder(''); setProjMsg('Project created'); loadProjects(); }
+    else { const d = await res.json(); setProjErr(d.error || 'Failed'); }
+  };
+
+  const handleDeleteProject = async (code) => {
+    const res = await apiFetch(`/api/projects/${code}`, { method: 'DELETE' });
+    if (res.ok) loadProjects();
+    else { const d = await res.json(); setProjErr(d.error || 'Failed'); }
+  };
 
   const loadPtyStats = () => {
     apiFetch('/api/pty-stats').then(r => r.json()).then(setPtyStats).catch(() => {});
@@ -140,6 +167,37 @@ export default function Settings() {
 
           {userMsg && <p className="text-sm text-emerald-500">{userMsg}</p>}
           {userErr && <p className="text-sm text-destructive">{userErr}</p>}
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="rounded-lg border border-border bg-card p-5 space-y-4">
+          <h3 className="font-medium">Projects</h3>
+
+          <div className="space-y-1">
+            {projects.map(p => (
+              <div key={p.code} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{p.code}</Badge>
+                  <span className="font-medium text-sm">{p.name}</span>
+                  <span className="text-xs text-muted-foreground font-mono">{p.folder}</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteProject(p.code)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={handleAddProject} className="flex gap-2 flex-wrap">
+            <Input placeholder="Code (e.g. NV)" value={newCode} onChange={e => setNewCode(e.target.value)} className="w-20" />
+            <Input placeholder="Name" value={newProjName} onChange={e => setNewProjName(e.target.value)} className="flex-1 min-w-32" />
+            <Input placeholder="Folder path" value={newFolder} onChange={e => setNewFolder(e.target.value)} className="flex-1 min-w-40" />
+            <Button type="submit" size="sm"><FolderPlus className="h-4 w-4 mr-1" /> Add</Button>
+          </form>
+
+          {projMsg && <p className="text-sm text-emerald-500">{projMsg}</p>}
+          {projErr && <p className="text-sm text-destructive">{projErr}</p>}
         </section>
       )}
 
