@@ -203,7 +203,7 @@ export default function Phases() {
       {addForm}
       <div className="flex flex-1 min-h-0 gap-3">
         <div className="w-2/5 min-w-64 overflow-y-auto pr-2 border-r border-border">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-1">
             {phases.map(phase => (
               <button
                 key={phase.id}
