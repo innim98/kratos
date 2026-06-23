@@ -208,6 +208,9 @@ export default function AgentDetail({ agentId, onGoBack }) {
               {agent.status}
             </button>
           )}
+          <button onClick={handleSendGuide} className="text-xs text-muted-foreground hover:text-foreground" title="Send API guide to terminal">
+            <BookOpen className="h-3.5 w-3.5" />
+          </button>
           {agent?.ports?.length > 0 && (
             <div className="flex items-center gap-1">
               {agent.ports.map(p => (
