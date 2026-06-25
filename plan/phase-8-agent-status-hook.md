@@ -101,4 +101,28 @@ localStorage에 저장: `kratos_notify_mode` = `all` | `focus` | `off`
 4. guide 페이지에 hook 설정 가이드 추가
 5. Header 알림 3-option UI 변경
 
+## 후속 변경 (2026-06-25)
+
+초기 구현 이후 실제 동작에 맞춰 확장됨:
+
+- **상태 3종**: working / asking_permission(표시명 `ask`, 보라색) / idle
+- **훅 4종** (`PreToolUse`→working 대신):
+  - `UserPromptSubmit` → working
+  - `PermissionRequest` → asking_permission
+  - `PostToolUse` → working (승인 후 도구 실행 시 asking_permission 해제)
+  - `PermissionDenied` → working (기각 시 해제)
+  - `Stop` → idle
+- **토큰/포트 전달**: 서버가 등록/기동 시 `tmux set-environment`로 세션에 주입.
+  훅은 `$(tmux show-environment KRATOS_TOKEN|cut -d= -f2-)`로 런타임에 읽음
+  (env 상속 불필요, 같은 폴더 다중 에이전트 충돌 없음).
+- **WS 실시간 푸시**: `/api/agents/status`가 모든 상태 변경마다 `agent-status`
+  WS 이벤트 브로드캐스트. Sidebar가 구독해 해당 에이전트만 즉시 갱신 (폴링 제거).
+  idle 전환 시 `agent-done`도 별도 발생 (알림용).
+
+## 알려진 한계 (다음 페이즈 후보)
+
+- 브라우저당 WS 연결 3개 (Dashboard / Sidebar / 터미널). agents 상태를
+  상위로 끌어올려 단일 WS로 통합하는 리팩터 여지 있음.
+- offline 전환은 실시간 푸시 없음 (목록 재조회 시에만 반영).
+
 ## Status: DONE (2026-06-25)
