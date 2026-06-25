@@ -79,7 +79,7 @@
 ## 데스크탑: wheel2txt 스위치
 
 ### 개요
-Agent Detail 헤더에 `[v] wheel2txt` 토글 스위치 (데스크탑 only). localStorage 저장.
+Header 상단 바, Focus 알람 스위치 왼쪽에 `[v] wheel2txt` 토글 스위치 (데스크탑 only). localStorage 저장.
 
 ### 동작
 - **스위치 ON + wheel up** → Text 모드 진입 (과거 로그를 보기 위해)
