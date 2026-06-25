@@ -24,7 +24,12 @@ export default function Header({ notifyMode, onCycleNotifyMode, onGoHome }) {
             className={cn('flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors', mode.color)}
             title={`Notification: ${mode.label}`}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <span className="relative">
+              <Icon className="h-3.5 w-3.5" />
+              {notifyMode !== 'off' && (
+                <span className="absolute -top-1 -right-1.5 text-[7px] font-bold leading-none">{notifyMode === 'all' ? 'A' : 'F'}</span>
+              )}
+            </span>
             <span className="hidden sm:inline">{mode.label}</span>
           </button>
           <span className="text-sm text-muted-foreground">{user.username}</span>
