@@ -72,9 +72,17 @@ export default async function agentRoutes(app) {
     try {
       const agentToken = crypto.randomUUID();
       const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM agents').get()?.m || 0;
+      const port = process.env.PORT || 15001;
       const result = db.prepare(
         'INSERT INTO agents (name, tmux_session, token, sort_order, folder) VALUES (?, ?, ?, ?, ?)'
       ).run(name, sessionName, agentToken, maxOrder + 1, folder || null);
+
+      // Auto-set KRATOS_TOKEN/PORT in tmux session
+      try {
+        execSync(`tmux set-environment -t ${sessionName} KRATOS_TOKEN ${agentToken}`, { timeout: 3000 });
+        execSync(`tmux set-environment -t ${sessionName} KRATOS_PORT ${port}`, { timeout: 3000 });
+      } catch {}
+
       return {
         id: result.lastInsertRowid,
         name,

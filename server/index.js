@@ -149,14 +149,20 @@ export async function buildServer(opts = {}) {
   });
 
   if (!testing) {
-    // Backfill folder for existing agents from tmux cwd
+    // Backfill folder + set KRATOS_TOKEN/PORT env for all agents
     try {
       const { execSync } = await import('child_process');
-      const agentsNoFolder = db.prepare('SELECT * FROM agents WHERE folder IS NULL').all();
-      for (const a of agentsNoFolder) {
+      const allAgents = db.prepare('SELECT * FROM agents').all();
+      for (const a of allAgents) {
         try {
-          const cwd = execSync(`tmux display-message -t ${a.tmux_session} -p '#{pane_current_path}'`, { encoding: 'utf8', timeout: 3000 }).trim();
-          if (cwd) db.prepare('UPDATE agents SET folder = ? WHERE id = ?').run(cwd, a.id);
+          // Backfill folder
+          if (!a.folder) {
+            const cwd = execSync(`tmux display-message -t ${a.tmux_session} -p '#{pane_current_path}'`, { encoding: 'utf8', timeout: 3000 }).trim();
+            if (cwd) db.prepare('UPDATE agents SET folder = ? WHERE id = ?').run(cwd, a.id);
+          }
+          // Set env vars in tmux session
+          execSync(`tmux set-environment -t ${a.tmux_session} KRATOS_TOKEN ${a.token}`, { timeout: 3000 });
+          execSync(`tmux set-environment -t ${a.tmux_session} KRATOS_PORT ${port}`, { timeout: 3000 });
         } catch {}
       }
     } catch {}
