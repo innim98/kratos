@@ -116,27 +116,24 @@ curl -X PUT http://localhost:${port}/api/phase-documents/<DOC_ID> \\
 # STATUS HOOK (자동 알림)
 # ═══════════════════════════════════════════
 
-# 상태 보고 (working / idle)
-# idle 전환 시 Kratos가 자동으로 작업완료 알림 발생
+# 상태 보고 (working / asking_permission / idle)
+# working→idle 전환 시 Kratos가 자동으로 작업완료 알림 발생
 curl -X POST http://localhost:${port}/api/agents/status \\
   ${authHeader} \\
   -H "Content-Type: application/json" \\
   -d '{"status": "idle"}'
 
-# ── 설정 방법 (2단계) ──
-#
-# 1단계: 터미널에서 환경변수 설정 (같은 폴더에서 여러 에이전트가 공존해도 충돌 없음)
-export KRATOS_TOKEN="${token}"
-export KRATOS_PORT="${port}"
-#
-# 2단계: Claude Code hook 설정 (.claude/settings.local.json)
-# 환경변수 $KRATOS_TOKEN을 참조하므로 같은 파일을 공유해도 안전합니다.
+# ── 설정 방법 ──
+# 환경변수 KRATOS_TOKEN / KRATOS_PORT 는 서버가 자동 설정합니다.
+# .claude/settings.local.json 에 아래 hooks 를 추가하세요:
 # {
 #   "hooks": {
+#     "UserPromptSubmit": [{"matcher":"","hooks":[{"type":"command",
+#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}],
+#     "PermissionRequest": [{"matcher":"","hooks":[{"type":"command",
+#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"asking_permission\\"}'"}]}],
 #     "Stop": [{"matcher":"","hooks":[{"type":"command",
-#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}],
-#     "PreToolUse": [{"matcher":"","hooks":[{"type":"command",
-#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}]
+#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}]
 #   }
 # }
 `;

@@ -83,7 +83,7 @@ export default function AgentList({ onSelectAgent }) {
               className="flex items-center justify-between rounded-lg border border-border bg-card p-4 cursor-pointer hover:border-primary/50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className={`h-2.5 w-2.5 rounded-full ${a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
+                <span className={`h-2.5 w-2.5 rounded-full ${a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'ask' ? 'bg-purple-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
                 <div>
                   <span className="font-medium">{a.name}</span>
                   <span className="text-xs text-muted-foreground ml-2 font-mono">{a.tmux_session}</span>
@@ -113,11 +113,11 @@ export default function AgentList({ onSelectAgent }) {
                     onClick={() => onSelectAgent(a.id)}
                     className={cn(
                       'rounded-lg border px-3 py-2.5 text-left transition-colors hover:border-primary/50',
-                      a.status === 'working' ? 'bg-emerald-950/20 border-emerald-500/30' : a.status === 'idle' ? 'bg-yellow-950/20 border-yellow-500/30' : a.status === 'online' ? 'bg-emerald-950/10 border-emerald-500/20' : 'bg-card border-border'
+                      a.status === 'working' ? 'bg-emerald-950/20 border-emerald-500/30' : a.status === 'ask' ? 'bg-purple-950/20 border-purple-500/30' : a.status === 'idle' ? 'bg-yellow-950/20 border-yellow-500/30' : a.status === 'online' ? 'bg-emerald-950/10 border-emerald-500/20' : 'bg-card border-border'
                     )}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className={cn('h-2 w-2 rounded-full shrink-0', a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40')} />
+                      <span className={cn('h-2 w-2 rounded-full shrink-0', a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'ask' ? 'bg-purple-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40')} />
                       <span className="text-sm font-medium truncate">{a.name}</span>
                     </div>
                     <div className="flex items-center justify-between mt-1">

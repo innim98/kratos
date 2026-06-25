@@ -57,7 +57,7 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneA
                 )}
                 title={a.name}
               >
-                <span className={cn('h-2 w-2 rounded-full', isSilentDone ? 'bg-orange-400 animate-pulse' : isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+                <span className={cn('h-2 w-2 rounded-full', isSilentDone ? 'bg-orange-400 animate-pulse' : isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'ask' ? 'bg-purple-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
               </button>
             );
           })}
@@ -102,7 +102,7 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneA
                       : 'hover:bg-accent/50 text-muted-foreground'
                   )}
                 >
-                  <span className={cn('h-2 w-2 rounded-full shrink-0', isSilentDone ? 'bg-orange-400 animate-pulse' : isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+                  <span className={cn('h-2 w-2 rounded-full shrink-0', isSilentDone ? 'bg-orange-400 animate-pulse' : isDone ? 'bg-emerald-400 animate-pulse' : a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'ask' ? 'bg-purple-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
                   <span className={cn('truncate', isSilentDone && 'font-bold text-orange-400', isDone && !isSilentDone && 'font-bold text-emerald-400')}>{a.name}</span>
                   {isLockedByOther && (
                     <span className="ml-auto shrink-0 flex items-center gap-1 text-[10px] text-yellow-500" title={`Locked by ${a.lock.username}`}>

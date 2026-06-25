@@ -35,7 +35,7 @@ export default async function agentRoutes(app) {
       const lock = lockMap.get(a.id);
       return {
         ...a,
-        status: !live.has(a.tmux_session) ? 'offline' : a.reported_status || 'online',
+        status: !live.has(a.tmux_session) ? 'offline' : (a.reported_status === 'asking_permission' ? 'ask' : a.reported_status) || 'online',
         lastActivity: live.get(a.tmux_session)?.activity || null,
         ports,
         lock: lock ? { username: lock.username, clientId: lock.client_id } : null,
@@ -144,13 +144,13 @@ export default async function agentRoutes(app) {
     if (!agent) return reply.code(401).send({ error: 'Unauthorized' });
 
     const { status } = request.body || {};
-    if (!['working', 'idle'].includes(status)) return reply.code(400).send({ error: 'status must be working or idle' });
+    if (!['working', 'idle', 'asking_permission'].includes(status)) return reply.code(400).send({ error: 'status must be working, idle, or asking_permission' });
 
     const prevStatus = agent.reported_status;
     db.prepare("UPDATE agents SET reported_status = ?, last_status_at = datetime('now') WHERE id = ?").run(status, agent.id);
 
-    // working → idle: fire agent-done
-    if (prevStatus === 'working' && status === 'idle') {
+    // working/asking_permission → idle: fire agent-done
+    if (prevStatus && prevStatus !== 'idle' && status === 'idle') {
       const wsData = JSON.stringify({ type: 'agent-done', agentId: agent.id, agentName: agent.name });
       for (const client of app.websocketServer?.clients || []) {
         if (client.readyState === 1) {
