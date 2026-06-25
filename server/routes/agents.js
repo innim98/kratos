@@ -35,7 +35,7 @@ export default async function agentRoutes(app) {
       const lock = lockMap.get(a.id);
       return {
         ...a,
-        status: live.has(a.tmux_session) ? 'online' : 'offline',
+        status: !live.has(a.tmux_session) ? 'offline' : a.reported_status || 'online',
         lastActivity: live.get(a.tmux_session)?.activity || null,
         ports,
         lock: lock ? { username: lock.username, clientId: lock.client_id } : null,

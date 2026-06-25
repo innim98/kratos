@@ -83,14 +83,14 @@ export default function AgentList({ onSelectAgent }) {
               className="flex items-center justify-between rounded-lg border border-border bg-card p-4 cursor-pointer hover:border-primary/50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className={`h-2.5 w-2.5 rounded-full ${a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
+                <span className={`h-2.5 w-2.5 rounded-full ${a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
                 <div>
                   <span className="font-medium">{a.name}</span>
                   <span className="text-xs text-muted-foreground ml-2 font-mono">{a.tmux_session}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant={a.status === 'online' ? 'success' : 'secondary'}>{a.status}</Badge>
+                <Badge variant={a.status === 'offline' ? 'secondary' : 'success'}>{a.status}</Badge>
                 <span className="text-xs text-muted-foreground w-16 text-right">{timeAgo(a.lastActivity)}</span>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={(e) => handleDelete(e, a.id)}>
                   <Trash2 className="h-4 w-4" />
@@ -113,16 +113,16 @@ export default function AgentList({ onSelectAgent }) {
                     onClick={() => onSelectAgent(a.id)}
                     className={cn(
                       'rounded-lg border px-3 py-2.5 text-left transition-colors hover:border-primary/50',
-                      a.status === 'online' ? 'bg-emerald-950/20 border-emerald-500/30' : 'bg-card border-border'
+                      a.status === 'working' ? 'bg-emerald-950/20 border-emerald-500/30' : a.status === 'idle' ? 'bg-yellow-950/20 border-yellow-500/30' : a.status === 'online' ? 'bg-emerald-950/10 border-emerald-500/20' : 'bg-card border-border'
                     )}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className={cn('h-2 w-2 rounded-full shrink-0', a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40')} />
+                      <span className={cn('h-2 w-2 rounded-full shrink-0', a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40')} />
                       <span className="text-sm font-medium truncate">{a.name}</span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-[10px] text-muted-foreground">{timeAgo(a.lastActivity)}</span>
-                      <Badge variant={a.status === 'online' ? 'success' : 'secondary'} className="text-[9px] px-1 py-0">{a.status}</Badge>
+                      <Badge variant={a.status === 'offline' ? 'secondary' : 'success'} className="text-[9px] px-1 py-0">{a.status}</Badge>
                     </div>
                   </button>
                 ))}
