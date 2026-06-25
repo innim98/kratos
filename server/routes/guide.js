@@ -123,13 +123,20 @@ curl -X POST http://localhost:${port}/api/agents/status \\
   -H "Content-Type: application/json" \\
   -d '{"status": "idle"}'
 
-# Claude Code hook 설정 (~/.claude/settings.json):
+# ── 설정 방법 (2단계) ──
+#
+# 1단계: 터미널에서 환경변수 설정 (같은 폴더에서 여러 에이전트가 공존해도 충돌 없음)
+export KRATOS_TOKEN="${token}"
+export KRATOS_PORT="${port}"
+#
+# 2단계: Claude Code hook 설정 (.claude/settings.local.json)
+# 환경변수 $KRATOS_TOKEN을 참조하므로 같은 파일을 공유해도 안전합니다.
 # {
 #   "hooks": {
 #     "Stop": [{"matcher":"","hooks":[{"type":"command",
-#       "command":"curl -s -X POST http://localhost:${port}/api/agents/status -H \\"Authorization: Bearer ${token}\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}],
+#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}],
 #     "PreToolUse": [{"matcher":"","hooks":[{"type":"command",
-#       "command":"curl -s -X POST http://localhost:${port}/api/agents/status -H \\"Authorization: Bearer ${token}\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}]
+#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}]
 #   }
 # }
 `;
