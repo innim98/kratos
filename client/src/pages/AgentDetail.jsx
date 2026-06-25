@@ -140,7 +140,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
   const handleSendGuide = () => {
     const port = serverPort || '15001';
     const guideUrl = `http://localhost:${port}/api/agents/${agentId}/guide`;
-    const msg = `# Kratos API Guide: ${guideUrl}\n# Token: ${agent?.token || 'none'}\ncurl -s ${guideUrl}\n`;
+    const msg = `curl -s ${guideUrl}\n`;
     termRef.current?.sendInput(msg);
   };
 
