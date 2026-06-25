@@ -91,7 +91,6 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const textRef = useRef(null);
   const pollRef = useRef(null);
   const dragStartYRef = useRef(null);
-  const dragScrollStartRef = useRef(0);
 
   useImperativeHandle(ref, () => ({
     sendInput(text) {
@@ -343,9 +342,19 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
         <div className="flex flex-col flex-1 min-h-0 relative" style={{ background: '#151515' }}>
           {isMobile && (
             <div
-              onClick={exitTextMode}
               className="absolute top-0 right-0 w-[40px] h-full flex items-center justify-center z-10 touch-none"
               style={{ background: 'rgba(255,255,255,0.08)' }}
+              onClick={exitTextMode}
+              onTouchStart={(e) => { dragStartYRef.current = e.touches[0].clientY; }}
+              onTouchMove={(e) => {
+                if (dragStartYRef.current == null || !textRef.current) return;
+                const el = e.currentTarget;
+                const rect = el.getBoundingClientRect();
+                const ratio = (e.touches[0].clientY - rect.top) / rect.height;
+                const maxScroll = textRef.current.scrollHeight - textRef.current.clientHeight;
+                textRef.current.scrollTop = ratio * maxScroll;
+              }}
+              onTouchEnd={() => { dragStartYRef.current = null; }}
             >
               <span className="text-white/50 text-[9px] font-bold" style={{ writingMode: 'vertical-lr' }}>TERM</span>
             </div>
@@ -383,15 +392,15 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
             }}
             onTouchMove={(e) => {
               if (dragStartYRef.current == null) return;
-              const dy = e.touches[0].clientY - dragStartYRef.current;
-              if (!textMode && Math.abs(dy) > 10) {
+              if (!textMode && Math.abs(e.touches[0].clientY - dragStartYRef.current) > 10) {
                 enterTextMode();
-                dragScrollStartRef.current = 0;
               }
               if (textRef.current) {
+                const el = e.currentTarget;
+                const rect = el.getBoundingClientRect();
+                const ratio = (e.touches[0].clientY - rect.top) / rect.height;
                 const maxScroll = textRef.current.scrollHeight - textRef.current.clientHeight;
-                const ratio = (dragStartYRef.current - e.touches[0].clientY) / (containerRef.current?.clientHeight || 400);
-                textRef.current.scrollTop = dragScrollStartRef.current + ratio * maxScroll;
+                textRef.current.scrollTop = ratio * maxScroll;
               }
             }}
             onTouchEnd={() => { dragStartYRef.current = null; }}
