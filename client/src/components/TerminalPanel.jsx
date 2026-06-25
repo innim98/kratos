@@ -340,7 +340,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
       {/* Text mode overlay */}
       {textMode && (
         <div className="flex flex-col flex-1 min-h-0 relative" style={{ background: '#151515' }}>
-          {isMobile && (
+          {(
             <div
               className="absolute top-0 right-0 w-[40px] h-full flex items-center justify-center z-10 touch-none"
               style={{ background: 'rgba(255,255,255,0.08)' }}
@@ -382,7 +382,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
           className="absolute inset-0"
           style={{ background: '#0a0a0a' }}
         />
-        {isMobile && (
+        {(
           <div
             className="absolute top-0 right-0 w-[40px] h-full flex items-center justify-center z-10 touch-none"
             style={{ background: 'rgba(255,255,255,0.05)' }}
