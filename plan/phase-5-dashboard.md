@@ -44,3 +44,5 @@ Kratos 메인 페이지. 로그인 후 첫 화면에 전체 현황을 한눈에 
 1. `GET /api/dashboard` 엔드포인트 (한 번에 모든 요약 데이터 반환)
 2. Dashboard 홈 컴포넌트 (Welcome 대체)
 3. 각 섹션 카드 클릭 시 해당 뷰로 이동
+
+## Status: DONE (2026-06-21)

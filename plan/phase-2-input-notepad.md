@@ -164,3 +164,5 @@ function loadDraft(agentId) {
 4. draft 자동 저장/복원 (onChange, visibilitychange, beforeunload, mount)
 5. History UI 패널
 6. 하단 바에 `Keys` + `Hist` 버튼 배치
+
+## Status: DONE (2026-06-03)
