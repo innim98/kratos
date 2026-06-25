@@ -1,5 +1,7 @@
 # Phase 3: Agent Group Chat
 
+> **상태: 폐기됨 (Phase 7에서 제거)**
+
 ## Overview
 
 Kratos 내 그룹 채팅. 사용자와 에이전트가 동시 참여. 사용자는 WS 실시간, 에이전트는 tmux 알림 → API 폴링 방식.

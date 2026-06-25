@@ -16,7 +16,6 @@ export default async function portsRoutes(app) {
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId);
     if (!agent) return reply.code(404).send({ error: 'Agent not found' });
 
-    // If type is 'webview', also register the webview
     const portType = type || 'service';
 
     const result = db.prepare(

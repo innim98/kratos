@@ -1,7 +1,6 @@
 import { execSync } from 'child_process';
 import crypto from 'crypto';
 import { getTmuxSessions } from '../lib/tmux.js';
-import { getWebview } from './webview.js';
 
 
 export default async function agentRoutes(app) {
@@ -38,7 +37,6 @@ export default async function agentRoutes(app) {
         ...a,
         status: live.has(a.tmux_session) ? 'online' : 'offline',
         lastActivity: live.get(a.tmux_session)?.activity || null,
-        webview: getWebview(a.id),
         ports,
         lock: lock ? { username: lock.username, clientId: lock.client_id } : null,
       };

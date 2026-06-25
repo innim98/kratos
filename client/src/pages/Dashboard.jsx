@@ -6,7 +6,6 @@ import Settings from './Settings.jsx';
 import TodoList from './TodoList.jsx';
 import PortsDashboard from './PortsDashboard.jsx';
 import Issues from './Issues.jsx';
-import ChatPanel from '../components/ChatPanel.jsx';
 import Phases from './Phases.jsx';
 import Home from './Home.jsx';
 import { getToken, getClientId, apiFetch } from '../lib/api.js';
@@ -193,7 +192,6 @@ export default function Dashboard() {
   const goTodos = () => { leaveAgent(); setView('todos'); };
   const goPorts = () => { leaveAgent(); setView('ports'); };
   const goIssues = () => { leaveAgent(); setView('issues'); };
-  const goChat = () => { leaveAgent(); setView('chat'); };
   const goPhases = () => { leaveAgent(); setView('phases'); };
   const goMenu = () => { leaveAgent(); setView('welcome'); };
 
@@ -214,7 +212,6 @@ export default function Dashboard() {
   else if (view === 'todos') content = <TodoList />;
   else if (view === 'ports') content = <PortsDashboard />;
   else if (view === 'issues') content = <Issues />;
-  else if (view === 'chat') content = <ChatPanel />;
   else if (view === 'phases') content = <Phases />;
   else if (view === 'settings') content = <Settings />;
   else content = <Home onSelectAgent={selectAgent} onGoTodos={goTodos} onGoIssues={goIssues} onGoPhases={goPhases} />;
@@ -230,7 +227,6 @@ export default function Dashboard() {
       onGoTodos={goTodos}
       onGoPorts={goPorts}
       onGoIssues={goIssues}
-      onGoChat={goChat}
       onGoPhases={goPhases}
       onGoMenu={goMenu}
       silentDoneAgents={silentDoneAgents}

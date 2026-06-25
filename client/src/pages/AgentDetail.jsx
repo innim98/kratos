@@ -4,12 +4,10 @@ import { Button } from '../components/ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import { isEmbed } from '../lib/embed.js';
 import TerminalPanel from '../components/TerminalPanel.jsx';
-import WebviewPanel from '../components/WebviewPanel.jsx';
 import FilesPanel from '../components/FilesPanel.jsx';
 import TextPanel from '../components/TextPanel.jsx';
 import TodosPanel from '../components/TodosPanel.jsx';
 import IssuesPanel from '../components/IssuesPanel.jsx';
-import ChatPanel from '../components/ChatPanel.jsx';
 import PanelContent from '../components/PanelContent.jsx';
 import SplitView from '../components/SplitView.jsx';
 import FileViewer from '../components/FileViewer.jsx';
@@ -26,17 +24,15 @@ const SPLIT_MODES = [
 ];
 
 const LEFT_TABS = ['terminal', 'files', 'text'];
-const RIGHT_TABS = ['files', 'text', 'todos', 'issues', 'chat'];
+const RIGHT_TABS = ['files', 'text', 'todos', 'issues'];
 
 
 function renderPanelContent(tab, agentId, termRef, agent, termKey) {
   if (tab === 'terminal') return <TerminalPanel key={termKey} ref={termRef} agentId={agentId} />;
   if (tab === 'files') return <FilesPanel agentId={agentId} />;
   if (tab === 'text') return <TextPanel agentId={agentId} />;
-  if (tab === 'webview') return <WebviewPanel webview={agent?.webview} agentId={agentId} />;
   if (tab === 'todos') return <TodosPanel agentId={agentId} />;
   if (tab === 'issues') return <IssuesPanel agentId={agentId} />;
-  if (tab === 'chat') return <ChatPanel agentId={agentId} />;
   return null;
 }
 
@@ -194,7 +190,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
 
   // Mobile
   if (isMobile) {
-    const MOBILE_TABS = ['terminal', 'files', 'text', 'todos', 'issues', 'chat'];
+    const MOBILE_TABS = ['terminal', 'files', 'text', 'todos', 'issues'];
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">

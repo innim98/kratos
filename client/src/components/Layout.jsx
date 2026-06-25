@@ -4,7 +4,7 @@ import Sidebar from './Sidebar.jsx';
 import MobileNav from './MobileNav.jsx';
 import { isEmbed } from '../lib/embed.js';
 
-export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoChat, onGoPhases, onGoMenu, notifyFocusOnly, onToggleNotifyFocusOnly, children }) {
+export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoPhases, onGoMenu, notifyFocusOnly, onToggleNotifyFocusOnly, children }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     localStorage.getItem('kratos_sidebar_collapsed') === 'true'
@@ -45,7 +45,6 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
             onGoTodos={onGoTodos}
             onGoPorts={onGoPorts}
             onGoIssues={onGoIssues}
-            onGoChat={onGoChat}
             onGoPhases={onGoPhases}
             onGoMenu={onGoMenu}
           >
@@ -68,7 +67,6 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
             onGoTodos={onGoTodos}
             onGoPorts={onGoPorts}
             onGoIssues={onGoIssues}
-            onGoChat={onGoChat}
             onGoPhases={onGoPhases}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(c => !c)}
@@ -94,7 +92,6 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
           onGoTodos={onGoTodos}
           onGoPorts={onGoPorts}
           onGoIssues={onGoIssues}
-          onGoChat={onGoChat}
           onGoPhases={onGoPhases}
           onGoMenu={onGoMenu}
         >
@@ -122,7 +119,6 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
           onGoTodos={onGoTodos}
           onGoPorts={onGoPorts}
           onGoIssues={onGoIssues}
-          onGoChat={onGoChat}
           onGoPhases={onGoPhases}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(c => !c)}

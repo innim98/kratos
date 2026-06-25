@@ -16,26 +16,13 @@ export default async function guideRoutes(app) {
 # Token: ${token}
 
 # ═══════════════════════════════════════════
-# WEBVIEW (localhost-only, no auth needed)
-# ═══════════════════════════════════════════
-
-# Register webview port
-curl -X POST http://localhost:${port}/api/agents/${id}/webview \\
-  -H "Content-Type: application/json" \\
-  -d '{"port": <YOUR_PORT>, "path": "/"}'
-
-# Read page text / screenshot
-curl -s http://localhost:${port}/api/agents/${id}/webview/dom | jq '.text'
-curl -s http://localhost:${port}/api/agents/${id}/webview/screenshot | jq -r '.base64' | base64 -d > /tmp/screenshot.png
-
-# ═══════════════════════════════════════════
 # PORT REGISTRATION (register ALL ports)
 # ═══════════════════════════════════════════
 
 curl -X POST http://localhost:${port}/api/agents/${id}/ports \\
   ${authHeader} \\
   -H "Content-Type: application/json" \\
-  -d '{"port": 5173, "label": "Vite dev server", "type": "webview"}'
+  -d '{"port": 5173, "label": "Vite dev server", "type": "service"}'
 
 curl -X POST http://localhost:${port}/api/agents/${id}/ports \\
   ${authHeader} \\
@@ -95,23 +82,6 @@ curl -X PUT http://localhost:${port}/api/issues/<CODE>-<NUM> \\
 curl -X POST http://localhost:${port}/api/agents/${id}/upload \\
   ${authHeader} \\
   -F "files=@/path/to/file"
-
-# ═══════════════════════════════════════════
-# CHAT
-# ═══════════════════════════════════════════
-
-# List my chats
-curl -s http://localhost:${port}/api/chats ${authHeader} | jq
-
-# Read messages (use after=<last_id> for new messages only)
-curl -s http://localhost:${port}/api/chats/<CHAT_ID>/messages ${authHeader} | jq
-curl -s "http://localhost:${port}/api/chats/<CHAT_ID>/messages?after=<LAST_MSG_ID>" ${authHeader} | jq
-
-# Send message (use @agent-name or @all to notify agents)
-curl -X POST http://localhost:${port}/api/chats/<CHAT_ID>/messages \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"body": "Hello @all"}'
 
 # ═══════════════════════════════════════════
 # VOICE (text-to-speech reply to user)

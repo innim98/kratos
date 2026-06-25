@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Kratos is a web-based agent dashboard that monitors and controls AI agents (Claude, Codex, etc.) running in tmux sessions. It provides a JWT-authenticated dashboard with terminal access via xterm.js and webview panels with two modes: Local (proxy) and Shared Screen (rrweb DOM mirroring via Puppeteer).
+Kratos is a web-based agent dashboard that monitors and controls AI agents (Claude, Codex, etc.) running in tmux sessions. It provides a JWT-authenticated dashboard with terminal access via xterm.js, file browser, todos, issues, phases, and agent lock management.
 
 ## Tech Stack
 
@@ -13,13 +13,12 @@ Kratos is a web-based agent dashboard that monitors and controls AI agents (Clau
 - **Database**: better-sqlite3 (WAL mode)
 - **Auth**: @fastify/jwt + bcryptjs (7-day token expiry)
 - **Terminal**: xterm.js + node-pty → `tmux attach`
-- **Shared Screen**: puppeteer + rrweb (record/replay)
-- **WebSocket**: @fastify/websocket (terminal streaming + shared screen)
+- **WebSocket**: @fastify/websocket (terminal streaming)
 
 ## Project Structure
 
 Monorepo with two packages:
-- `server/` — Fastify backend (API, WebSocket, tmux bridge, webview proxy, Puppeteer)
+- `server/` — Fastify backend (API, WebSocket, tmux bridge)
 - `client/` — React + Vite frontend (SPA)
 
 DB migrations live in `server/migrations/` as numbered SQL files (001_*.sql, 002_*.sql). A `migrations` table tracks applied versions. Server auto-applies pending migrations on startup.
@@ -33,35 +32,19 @@ Agents are "unmanaged" — Kratos doesn't create/destroy them, it connects to ex
 2. `node-pty` spawns `tmux attach -t <session>` for live streaming
 3. Client input → WebSocket → pty.write() → tmux → agent process
 
-### Webview Dual Mode
-
-Agents register webviews via `POST /api/agents/:id/webview { port, path }` (localhost-only, no JWT).
-
-- **Local**: Kratos proxies HTTP/WS to `localhost:<port>` — each user gets independent DOM
-- **Shared Screen**: Kratos loads page in Puppeteer, injects rrweb record, streams DOM snapshots + mutations to all clients via WebSocket. User input is forwarded to Puppeteer and DOM changes propagate to everyone.
-
 ### Sidebar Navigation States
 
 Three states with contextual sidebar:
 - **State A (Menu)**: Navigation buttons (Agents, Settings)
 - **State B (Agent List)**: Sidebar stays as menu, viewport shows agent cards
-- **State C (Agent Detail)**: Sidebar transforms into agent switcher list, viewport shows terminal + webview split
+- **State C (Agent Detail)**: Sidebar transforms into agent switcher list, viewport shows terminal + panels
 
 Mobile (<768px): Full-screen transitions with back buttons instead of sidebar.
-
-### Webview Inspect API (for agents)
-
-Agents can read back what their webview looks like — localhost-only, no JWT:
-- `GET /api/agents/:id/webview/screenshot` → `{ format, base64, width, height }` (PNG)
-- `GET /api/agents/:id/webview/dom` → `{ title, url, text, html }`
-
-Both use a shared Puppeteer instance. Screenshot returns base64 PNG readable as vision input. DOM returns innerText + innerHTML (50KB max).
 
 ## Key Design Decisions
 
 - Agent metadata in SQLite, live status from `tmux list-sessions` — merged at query time
 - First registered user gets `role='admin'` automatically; admin manages other users via Settings
-- Webview registration API is localhost-only (no JWT) since only local agent processes call it
 - Terminal scrollback uses tmux's own buffer (`history-limit`) rather than server-side memory
 - Split view modes (horizontal/vertical/terminal-only) persisted in localStorage
 
@@ -74,7 +57,7 @@ cd server && npm install && node index.js --auth
 # Client (dev)
 cd client && npm install && npm run dev
 
-# Tests (57 tests)
+# Tests
 cd server && npm test
 
 # Ports configured in .env: PORT=15001, CLIENT_PORT=15000

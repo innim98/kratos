@@ -34,15 +34,6 @@ describe('ports API', () => {
     expect(JSON.parse(res.payload).port).toBe(5432);
   });
 
-  it('should register webview port via same API', async () => {
-    const res = await app.inject({
-      method: 'POST', url: `/api/agents/${agentId}/ports`,
-      headers: { authorization: `Bearer ${agentToken}` },
-      payload: { port: 5173, label: 'Vite dev server', type: 'webview' },
-    });
-    expect(res.statusCode).toBe(200);
-  });
-
   it('should list agent ports', async () => {
     const res = await app.inject({
       method: 'GET', url: `/api/agents/${agentId}/ports`,
@@ -50,7 +41,7 @@ describe('ports API', () => {
     });
     expect(res.statusCode).toBe(200);
     const ports = JSON.parse(res.payload);
-    expect(ports.length).toBe(2);
+    expect(ports.length).toBe(1);
     expect(ports.some(p => p.label === 'PostgreSQL')).toBe(true);
   });
 

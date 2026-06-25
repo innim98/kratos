@@ -18,9 +18,7 @@
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.7.0",
     "fastify": "^5.0.0",
-    "node-pty": "^1.1.0",
-    "puppeteer": "^24.41.0",
-    "rrweb": "^2.0.0-alpha.17"
+    "node-pty": "^1.1.0"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

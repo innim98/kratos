@@ -3,10 +3,10 @@ import { apiFetch } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { Button } from './ui/button.jsx';
 import { cn } from '../lib/utils.js';
-import { Bot, Settings, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ListTodo, Network, AlertCircle, MessageSquare, Layers, PanelLeftClose, PanelLeftOpen, Lock } from 'lucide-react';
+import { Bot, Settings, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ListTodo, Network, AlertCircle, Layers, PanelLeftClose, PanelLeftOpen, Lock } from 'lucide-react';
 import { getClientId } from '../lib/api.js';
 
-export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoChat, onGoPhases, collapsed, onToggleCollapse }) {
+export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoPhases, collapsed, onToggleCollapse }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [agents, setAgents] = useState([]);
@@ -142,9 +142,6 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneA
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onGoIssues}>
             <AlertCircle className="h-4 w-4 mr-2" /> Issues
           </Button>
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onGoChat}>
-            <MessageSquare className="h-4 w-4 mr-2" /> Chat
-          </Button>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onGoPhases}>
             <Layers className="h-4 w-4 mr-2" /> Phases
           </Button>
@@ -186,14 +183,6 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneA
           onClick={onGoIssues}
         >
           <AlertCircle className="h-4 w-4 mr-2" /> Issues
-        </Button>
-        <Button
-          variant={view === 'chat' ? 'secondary' : 'ghost'}
-          size="sm"
-          className="w-full justify-start"
-          onClick={onGoChat}
-        >
-          <MessageSquare className="h-4 w-4 mr-2" /> Chat
         </Button>
         <Button
           variant={view === 'phases' ? 'secondary' : 'ghost'}
