@@ -230,27 +230,27 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
     return () => { el.removeEventListener('scroll', onScroll); el.removeEventListener('wheel', onWheel); };
   }, [textMode]);
 
-  // Mobile: swipe down on xterm container → text mode
+  // Mobile: double-tap on upper half of xterm → text mode
   useEffect(() => {
     if (!isMobile || textMode) return;
     const el = containerRef.current;
     if (!el) return;
-    const onTouchStart = (e) => { touchStartRef.current = e.touches[0].clientY; };
-    const onTouchMove = (e) => {
-      if (touchStartRef.current == null) return;
-      const dy = e.touches[0].clientY - touchStartRef.current;
-      if (dy > 30) e.preventDefault(); // block pull-to-refresh
-    };
+    let lastTap = 0;
     const onTouchEnd = (e) => {
-      if (touchStartRef.current == null) return;
-      const dy = e.changedTouches[0].clientY - touchStartRef.current;
-      touchStartRef.current = null;
-      if (dy > 80) enterTextMode();
+      const touch = e.changedTouches[0];
+      const rect = el.getBoundingClientRect();
+      const y = touch.clientY - rect.top;
+      if (y > rect.height / 2) return; // lower half → ignore
+      const now = Date.now();
+      if (now - lastTap < 400) {
+        enterTextMode();
+        lastTap = 0;
+      } else {
+        lastTap = now;
+      }
     };
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
-    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchmove', onTouchMove); el.removeEventListener('touchend', onTouchEnd); };
+    return () => el.removeEventListener('touchend', onTouchEnd);
   }, [isMobile, textMode, agentId]);
 
   // Voice recording
