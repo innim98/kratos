@@ -338,20 +338,18 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
     <div className="flex flex-col w-full h-full min-h-0">
       {/* Text mode overlay */}
       {textMode && (
-        <div className="flex flex-col flex-1 min-h-0" style={{ background: '#151515' }}>
-          <div className="flex items-center justify-between px-3 py-1 shrink-0" style={{ background: '#1a1a1a', borderBottom: '1px solid #333' }}>
-            <span className="text-[10px]" style={{ color: '#888' }}>TEXT MODE</span>
+        <div className="flex flex-col flex-1 min-h-0 relative" style={{ background: '#151515' }}>
+          {isMobile && (
             <button
               onClick={exitTextMode}
-              className="text-[10px] px-2 py-0.5 rounded hover:bg-white/10"
-              style={{ color: '#888' }}
+              className="absolute top-2 right-2 w-[50px] h-[50px] rounded flex items-center justify-center text-white/60 text-xs font-bold z-10 active:bg-white/20"
+              style={{ background: 'rgba(255,255,255,0.05)' }}
             >
-              tap to return
+              TERM
             </button>
-          </div>
+          )}
           <pre
             ref={textRef}
-            onClick={isMobile ? exitTextMode : undefined}
             className="flex-1 overflow-auto p-3 whitespace-pre-wrap break-words select-text"
             style={{
               background: '#151515',
@@ -373,12 +371,13 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
           className="absolute inset-0"
           style={{ background: '#0a0a0a' }}
         />
-        {isMobile && !textMode && (
+        {isMobile && (
           <button
-            onClick={enterTextMode}
-            className="absolute top-2 right-2 w-[50px] h-[50px] rounded bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-xs font-bold z-10 active:bg-white/20"
+            onClick={textMode ? exitTextMode : enterTextMode}
+            className="absolute top-2 right-2 w-[50px] h-[50px] rounded flex items-center justify-center text-white/60 text-xs font-bold z-10 active:bg-white/20"
+            style={{ background: 'rgba(255,255,255,0.05)' }}
           >
-            TXT
+            {textMode ? 'TERM' : 'TXT'}
           </button>
         )}
       </div>
