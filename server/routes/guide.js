@@ -140,6 +140,30 @@ curl -X POST http://localhost:${port}/api/agents/status \\
 #       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}]
 #   }
 # }
+
+# ═══════════════════════════════════════════
+# STATUS SUBSCRIPTION (Kratos agents orchestrator 용)
+# ═══════════════════════════════════════════
+
+# 오케스트레이터 에이전트가, 다른 에이전트가 특정 상태로 바뀌는 것을 구독합니다.
+# 아래 예시: "다른 에이전트가 asking_permission(승인 대기)에 빠지면 알려줘" 구독.
+# - exclude_agents 에 자기 자신(${id})을 넣어 본인 이벤트는 제외합니다.
+# - 구독은 영속적이라 매번 발동합니다 (해제 전까지).
+# - 전달 조건: 구독자(나)가 idle 이고 tmux 에서 claude/codex 가 실행 중일 때.
+#   내가 작업 중이면 보류했다가, idle 이 되는 순간 tmux 로 아래 메시지를 받습니다:
+#     "(From Kratos) agent status updated"
+#   (보류 중 여러 건이 쌓여도 한 번만 전달)
+
+curl -X POST http://localhost:${port}/api/agents/subscribe-status \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"status": "asking_permission", "exclude_agents": [${id}]}'
+
+# 구독 해제 (status 생략 시 내 모든 구독 해제)
+curl -X DELETE http://localhost:${port}/api/agents/subscribe-status \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"status": "asking_permission"}'
 `;
 
     reply.header('content-type', 'text/plain');

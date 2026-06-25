@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import crypto from 'crypto';
 import { getTmuxSessions } from '../lib/tmux.js';
+import { processStatusChange } from '../lib/status-subscriptions.js';
 
 
 export default async function agentRoutes(app) {
@@ -167,6 +168,53 @@ export default async function agentRoutes(app) {
       broadcast({ type: 'agent-done', agentId: agent.id, agentName: agent.name });
     }
 
+    // Notify orchestrator subscribers (deferred until they are idle)
+    try { processStatusChange(db, agent, status); } catch {}
+
+    return { ok: true };
+  });
+
+  // Orchestrator subscribes to be notified when other agents enter a status.
+  // Notification is delivered to the subscriber's tmux once it is idle.
+  app.post('/api/agents/subscribe-status', async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return reply.code(401).send({ error: 'Unauthorized' });
+    const token = authHeader.slice(7);
+    const agent = db.prepare('SELECT * FROM agents WHERE token = ?').get(token);
+    if (!agent) return reply.code(401).send({ error: 'Unauthorized' });
+
+    const { status, exclude_agents } = request.body || {};
+    if (!['working', 'idle', 'asking_permission'].includes(status)) {
+      return reply.code(400).send({ error: 'status must be working, idle, or asking_permission' });
+    }
+    const exclude = Array.isArray(exclude_agents)
+      ? exclude_agents.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n))
+      : [];
+
+    db.prepare(`
+      INSERT INTO agent_status_subscriptions (subscriber_agent_id, watch_status, exclude_agents)
+      VALUES (?, ?, ?)
+      ON CONFLICT(subscriber_agent_id, watch_status)
+      DO UPDATE SET exclude_agents = excluded.exclude_agents, pending = 0, updated_at = datetime('now')
+    `).run(agent.id, status, JSON.stringify(exclude));
+
+    return { ok: true, subscriber: agent.id, watch_status: status, exclude_agents: exclude };
+  });
+
+  // Remove the caller's subscription(s). Optional body { status } narrows it.
+  app.delete('/api/agents/subscribe-status', async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return reply.code(401).send({ error: 'Unauthorized' });
+    const token = authHeader.slice(7);
+    const agent = db.prepare('SELECT * FROM agents WHERE token = ?').get(token);
+    if (!agent) return reply.code(401).send({ error: 'Unauthorized' });
+
+    const { status } = request.body || {};
+    if (status) {
+      db.prepare('DELETE FROM agent_status_subscriptions WHERE subscriber_agent_id = ? AND watch_status = ?').run(agent.id, status);
+    } else {
+      db.prepare('DELETE FROM agent_status_subscriptions WHERE subscriber_agent_id = ?').run(agent.id);
+    }
     return { ok: true };
   });
 
