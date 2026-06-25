@@ -236,6 +236,11 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
     const el = containerRef.current;
     if (!el) return;
     const onTouchStart = (e) => { touchStartRef.current = e.touches[0].clientY; };
+    const onTouchMove = (e) => {
+      if (touchStartRef.current == null) return;
+      const dy = e.touches[0].clientY - touchStartRef.current;
+      if (dy > 30) e.preventDefault(); // block pull-to-refresh
+    };
     const onTouchEnd = (e) => {
       if (touchStartRef.current == null) return;
       const dy = e.changedTouches[0].clientY - touchStartRef.current;
@@ -243,8 +248,9 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
       if (dy > 80) enterTextMode();
     };
     el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
-    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchend', onTouchEnd); };
+    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchmove', onTouchMove); el.removeEventListener('touchend', onTouchEnd); };
   }, [isMobile, textMode, agentId]);
 
   // Voice recording
