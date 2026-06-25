@@ -18,7 +18,10 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneA
   };
 
   useEffect(() => {
-    if (view === 'agent-detail') loadAgents();
+    if (view !== 'agent-detail') return;
+    loadAgents();
+    const interval = setInterval(loadAgents, 3000);
+    return () => clearInterval(interval);
   }, [view, selectedAgentId]);
 
   const handleReorder = async (agentId, direction) => {
