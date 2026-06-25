@@ -95,6 +95,24 @@ Header 상단 바, Focus 알람 스위치 왼쪽에 `[v] wheel2txt` 토글 스�
 - `e.deltaY < 0` (wheel up) → `e.preventDefault()` + Text 모드 진입
 - Text 모드 컨테이너의 `wheel` + `scroll` 이벤트로 복귀 감지
 
-## 기술 검토 결론
+## 실제 구현 결과
 
-문제 없습니다. 모바일은 xterm 터치 이벤트와 충돌 가능성이 유일한 우려지만, 하단 입력기를 쓰므로 안전합니다. 데스크탑은 스위치 OFF 시 기존 동작 그대로.
+### 불가능했던 것
+- **wheel override**: xterm.js canvas가 이벤트를 내부 소비하여 외부에서 가로채기 불가
+- **모바일 스와이프**: pull-to-refresh와 충돌, xterm canvas가 터치 이벤트 소비
+- **모바일 더블탭**: xterm canvas 위에서 이벤트 전달 안 됨
+- **W2T 스위치**: 위 이유로 동작하지 않아 제거
+
+### 최종 구현: 플로팅 TXT 스트립
+- xterm 우측에 40px 전체 높이 반투명 스트립 (모바일 only)
+- **탭** → Text 모드 진입
+- **드래그** → Text 모드 진입 + fast scroll (Y 위치 = 스크롤 비율)
+- Text 모드에서 우측 TERM 스트립:
+  - **탭** → Terminal 복귀
+  - **드래그** → fast scroll 유지
+  - 라벨: "DRAG SCROLL · TAP BACK"
+- Text 모드 스타일: #151515 배경, xterm과 동일 폰트
+- 5초 자동 폴링 (diff 비교, 깜빡임 없음)
+- 데스크탑: 기존 Terminal/Text 탭 전환 유지
+
+## Status: DONE (2026-06-25)
