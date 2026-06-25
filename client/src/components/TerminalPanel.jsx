@@ -90,6 +90,8 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const [textContent, setTextContent] = useState('');
   const textRef = useRef(null);
   const pollRef = useRef(null);
+  const dragStartYRef = useRef(null);
+  const dragScrollStartRef = useRef(0);
 
   useImperativeHandle(ref, () => ({
     sendInput(text) {
@@ -340,13 +342,13 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
       {textMode && (
         <div className="flex flex-col flex-1 min-h-0 relative" style={{ background: '#151515' }}>
           {isMobile && (
-            <button
+            <div
               onClick={exitTextMode}
-              className="absolute top-2 right-2 w-[50px] h-[50px] rounded flex items-center justify-center text-white/60 text-xs font-bold z-10 active:bg-white/20"
-              style={{ background: 'rgba(255,255,255,0.05)' }}
+              className="absolute top-0 right-0 w-[40px] h-full flex items-center justify-center z-10 touch-none"
+              style={{ background: 'rgba(255,255,255,0.08)' }}
             >
-              TERM
-            </button>
+              <span className="text-white/50 text-[9px] font-bold" style={{ writingMode: 'vertical-lr' }}>TERM</span>
+            </div>
           )}
           <pre
             ref={textRef}
@@ -372,13 +374,30 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
           style={{ background: '#0a0a0a' }}
         />
         {isMobile && (
-          <button
-            onClick={textMode ? exitTextMode : enterTextMode}
-            className="absolute top-2 right-2 w-[50px] h-[50px] rounded flex items-center justify-center text-white/60 text-xs font-bold z-10 active:bg-white/20"
+          <div
+            className="absolute top-0 right-0 w-[40px] h-full flex items-center justify-center z-10 touch-none"
             style={{ background: 'rgba(255,255,255,0.05)' }}
+            onClick={(e) => { e.stopPropagation(); enterTextMode(); }}
+            onTouchStart={(e) => {
+              dragStartYRef.current = e.touches[0].clientY;
+            }}
+            onTouchMove={(e) => {
+              if (dragStartYRef.current == null) return;
+              const dy = e.touches[0].clientY - dragStartYRef.current;
+              if (!textMode && Math.abs(dy) > 10) {
+                enterTextMode();
+                dragScrollStartRef.current = 0;
+              }
+              if (textRef.current) {
+                const maxScroll = textRef.current.scrollHeight - textRef.current.clientHeight;
+                const ratio = (dragStartYRef.current - e.touches[0].clientY) / (containerRef.current?.clientHeight || 400);
+                textRef.current.scrollTop = dragScrollStartRef.current + ratio * maxScroll;
+              }
+            }}
+            onTouchEnd={() => { dragStartYRef.current = null; }}
           >
-            {textMode ? 'TERM' : 'TXT'}
-          </button>
+            <span className="text-white/40 text-[9px] font-bold" style={{ writingMode: 'vertical-lr' }}>TXT</span>
+          </div>
         )}
       </div>
 
