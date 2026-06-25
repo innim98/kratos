@@ -124,16 +124,16 @@ curl -X POST http://localhost:${port}/api/agents/status \\
   -d '{"status": "idle"}'
 
 # ── 설정 방법 ──
-# 환경변수 KRATOS_TOKEN / KRATOS_PORT 는 서버가 자동 설정합니다.
-# .claude/settings.local.json 에 아래 hooks 를 추가하세요:
+# .claude/settings.local.json 에 아래 hooks 를 추가하세요.
+# 토큰/포트는 tmux에서 자동으로 읽으므로 별도 설정 불필요합니다.
 # {
 #   "hooks": {
 #     "UserPromptSubmit": [{"matcher":"","hooks":[{"type":"command",
-#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}],
+#       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}],
 #     "PermissionRequest": [{"matcher":"","hooks":[{"type":"command",
-#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"asking_permission\\"}'"}]}],
+#       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"asking_permission\\"}'"}]}],
 #     "Stop": [{"matcher":"","hooks":[{"type":"command",
-#       "command":"curl -s -X POST http://localhost:$KRATOS_PORT/api/agents/status -H \\"Authorization: Bearer $KRATOS_TOKEN\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}]
+#       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}]
 #   }
 # }
 `;
