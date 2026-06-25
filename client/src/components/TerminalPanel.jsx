@@ -249,8 +249,8 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
         lastTap = now;
       }
     };
-    el.addEventListener('touchend', onTouchEnd, { passive: true });
-    return () => el.removeEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
+    return () => el.removeEventListener('touchend', onTouchEnd, { capture: true });
   }, [isMobile, textMode, agentId]);
 
   // Voice recording
