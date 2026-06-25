@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { Button } from './ui/button.jsx';
 import { cn } from '../lib/utils.js';
 import { Bot, Settings, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ListTodo, Network, AlertCircle, Layers, PanelLeftClose, PanelLeftOpen, Lock } from 'lucide-react';
-import { getClientId } from '../lib/api.js';
+import { getClientId, getToken } from '../lib/api.js';
 
 export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoPhases, collapsed, onToggleCollapse }) {
   const { user } = useAuth();
@@ -20,8 +20,20 @@ export default function Sidebar({ view, selectedAgentId, doneAgents, silentDoneA
   useEffect(() => {
     if (view !== 'agent-detail') return;
     loadAgents();
-    const interval = setInterval(loadAgents, 3000);
-    return () => clearInterval(interval);
+
+    // Live status updates via WS — no polling.
+    const token = getToken();
+    if (!token) return;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/terminal?token=${encodeURIComponent(token)}`);
+    ws.onmessage = (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.type === 'agent-status') {
+        setAgents(prev => prev.map(a => a.id === msg.agentId ? { ...a, status: msg.status } : a));
+      }
+    };
+    return () => { if (ws.readyState === WebSocket.OPEN) ws.close(); };
   }, [view, selectedAgentId]);
 
   const handleReorder = async (agentId, direction) => {

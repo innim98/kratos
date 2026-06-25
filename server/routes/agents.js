@@ -149,14 +149,22 @@ export default async function agentRoutes(app) {
     const prevStatus = agent.reported_status;
     db.prepare("UPDATE agents SET reported_status = ?, last_status_at = datetime('now') WHERE id = ?").run(status, agent.id);
 
-    // working/asking_permission → idle: fire agent-done
-    if (prevStatus && prevStatus !== 'idle' && status === 'idle') {
-      const wsData = JSON.stringify({ type: 'agent-done', agentId: agent.id, agentName: agent.name });
+    const broadcast = (obj) => {
+      const data = JSON.stringify(obj);
       for (const client of app.websocketServer?.clients || []) {
         if (client.readyState === 1) {
-          try { client.send(wsData); } catch {}
+          try { client.send(data); } catch {}
         }
       }
+    };
+
+    // Push every status change so clients update live (no polling).
+    // Map asking_permission → ask to match the display status used elsewhere.
+    broadcast({ type: 'agent-status', agentId: agent.id, status: status === 'asking_permission' ? 'ask' : status });
+
+    // working/asking_permission → idle: fire agent-done
+    if (prevStatus && prevStatus !== 'idle' && status === 'idle') {
+      broadcast({ type: 'agent-done', agentId: agent.id, agentName: agent.name });
     }
 
     return { ok: true };
