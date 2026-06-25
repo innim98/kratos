@@ -11,3 +11,6 @@ dist/
 projects/
 server/bin/
 server/models/
+
+# Allow documentation screenshots
+!docs/images/*.png
