@@ -69,7 +69,7 @@ function loadDraft(agentId) {
   return localStorage.getItem(`kratos_input_draft_${agentId}`) || '';
 }
 
-const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, ref) {
+const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const containerRef = useRef(null);
   const termRef = useRef(null);
   const wsRef = useRef(null);
@@ -89,8 +89,6 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
   const [textMode, setTextMode] = useState(false);
   const [textContent, setTextContent] = useState('');
   const textRef = useRef(null);
-  const touchStartRef = useRef(null);
-  const atBottomRef = useRef(false);
   const pollRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
@@ -169,7 +167,6 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
 
   const enterTextMode = () => {
     setTextMode(true);
-    atBottomRef.current = false;
     loadTextContent();
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(loadTextContent, 5000);
@@ -190,68 +187,6 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
     }
   }, [textContent, textMode]);
 
-  // Desktop: wheel handler on xterm container
-  useEffect(() => {
-    if (isMobile || !wheel2txt || textMode) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const onWheel = (e) => {
-      if (e.deltaY < 0) { // wheel up
-        e.preventDefault();
-        enterTextMode();
-      }
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [isMobile, wheel2txt, textMode, agentId]);
-
-  // Text mode: detect bottom + extra wheel down → exit
-  useEffect(() => {
-    if (!textMode || !textRef.current) return;
-    const el = textRef.current;
-    const onScroll = () => {
-      const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
-      if (!isAtBottom) atBottomRef.current = false;
-    };
-    const onWheel = (e) => {
-      if (e.deltaY > 0) { // wheel down
-        const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
-        if (isAtBottom && atBottomRef.current) {
-          exitTextMode();
-          return;
-        }
-        if (isAtBottom) atBottomRef.current = true;
-      } else {
-        atBottomRef.current = false;
-      }
-    };
-    el.addEventListener('scroll', onScroll);
-    el.addEventListener('wheel', onWheel);
-    return () => { el.removeEventListener('scroll', onScroll); el.removeEventListener('wheel', onWheel); };
-  }, [textMode]);
-
-  // Mobile: double-tap on upper half of xterm → text mode
-  useEffect(() => {
-    if (!isMobile || textMode) return;
-    const el = containerRef.current;
-    if (!el) return;
-    let lastTap = 0;
-    const onTouchEnd = (e) => {
-      const touch = e.changedTouches[0];
-      const rect = el.getBoundingClientRect();
-      const y = touch.clientY - rect.top;
-      if (y > rect.height / 2) return; // lower half → ignore
-      const now = Date.now();
-      if (now - lastTap < 400) {
-        enterTextMode();
-        lastTap = 0;
-      } else {
-        lastTap = now;
-      }
-    };
-    el.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
-    return () => el.removeEventListener('touchend', onTouchEnd, { capture: true });
-  }, [isMobile, textMode, agentId]);
 
   // Voice recording
   const startRecording = async () => {
@@ -432,11 +367,21 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, 
       )}
 
       {/* Terminal */}
-      <div
-        ref={containerRef}
-        className={cn('flex-1 min-h-0', textMode && 'hidden')}
-        style={{ background: '#0a0a0a' }}
-      />
+      <div className={cn('flex-1 min-h-0 relative', textMode && 'hidden')}>
+        <div
+          ref={containerRef}
+          className="absolute inset-0"
+          style={{ background: '#0a0a0a' }}
+        />
+        {isMobile && !textMode && (
+          <button
+            onClick={enterTextMode}
+            className="absolute top-2 right-2 w-[50px] h-[50px] rounded bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-xs font-bold z-10 active:bg-white/20"
+          >
+            TXT
+          </button>
+        )}
+      </div>
 
       {/* Extra keys panel */}
       {showExtras && (
