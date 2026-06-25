@@ -14,6 +14,8 @@ const QUICK_KEYS = [
   { label: '^C', seq: '\x03' },
   { label: '↑', seq: ESC + '[A' },
   { label: '↓', seq: ESC + '[B' },
+  { label: 'PgUp', seq: ESC + '[5~' },
+  { label: 'PgDn', seq: ESC + '[6~' },
   { label: 'q', seq: 'q' },
 ];
 
