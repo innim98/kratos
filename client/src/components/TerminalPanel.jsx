@@ -356,7 +356,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
               }}
               onTouchEnd={() => { dragStartYRef.current = null; }}
             >
-              <span className="text-white/30 text-[8px]" style={{ writingMode: 'vertical-lr' }}>drag scroll · tap back</span>
+              <span className="text-white/15 text-[10px] font-bold" style={{ writingMode: 'vertical-lr' }}>DRAG SCROLL · TAP BACK</span>
             </div>
           )}
           <pre
