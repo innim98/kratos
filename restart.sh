@@ -6,6 +6,7 @@
 # Usage: ./restart.sh            # restart both
 #        ./restart.sh server     # restart only the server
 #        ./restart.sh client     # restart only the client
+#        ./restart.sh ensure     # start only whatever is currently DOWN (cheap; safe to always run)
 #
 set -uo pipefail
 set +m  # silence job-control PID echo for backgrounded processes
@@ -27,12 +28,16 @@ TARGET="${1:-both}"
 kill_port() {
   local p="$1"
   local pids
-  pids="$(lsof -ti:"$p" 2>/dev/null || true)"
+  # IMPORTANT: -sTCP:LISTEN so we only kill the process LISTENING on this port.
+  # A plain `lsof -ti:$p` also returns processes merely CONNECTED to it (e.g. the
+  # vite dev server proxying to the backend) — killing those took the frontend
+  # down every time the backend was restarted.
+  pids="$(lsof -ti:"$p" -sTCP:LISTEN 2>/dev/null || true)"
   if [ -n "$pids" ]; then
-    echo "  killing pids on :$p -> $pids"
+    echo "  killing listener on :$p -> $pids"
     kill $pids 2>/dev/null || true
     sleep 1
-    pids="$(lsof -ti:"$p" 2>/dev/null || true)"
+    pids="$(lsof -ti:"$p" -sTCP:LISTEN 2>/dev/null || true)"
     [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
   fi
 }
@@ -70,21 +75,29 @@ wait_up() {
   return 1
 }
 
+is_up() { [ -n "$(lsof -ti:"$1" -sTCP:LISTEN 2>/dev/null)" ]; }
+
 rc=0
 case "$TARGET" in
   server) start_server ;;
   client) start_client ;;
   both)   start_server; start_client ;;
-  *) echo "unknown target: $TARGET (use: server | client | both)"; exit 2 ;;
+  ensure)
+    is_up "$PORT"        && echo "server already up on :$PORT"        || start_server
+    is_up "$CLIENT_PORT" && echo "client already up on :$CLIENT_PORT" || start_client
+    ;;
+  *) echo "unknown target: $TARGET (use: server | client | both | ensure)"; exit 2 ;;
 esac
 
-# give them a moment, then confirm
+# give them a moment, then confirm. ensure/both verify BOTH services.
 sleep 2
 [ "$TARGET" = "client" ] || wait_up "$PORT" "server" "$SERVER_LOG" || rc=1
 [ "$TARGET" = "server" ] || wait_up "$CLIENT_PORT" "client" "$CLIENT_LOG" || rc=1
 
 if [ "$rc" -eq 0 ]; then
-  echo "all up. server=http://localhost:$PORT  client=http://localhost:$CLIENT_PORT"
+  [ "$TARGET" != "client" ] && echo "  server=http://localhost:$PORT"
+  [ "$TARGET" != "server" ] && echo "  client=http://localhost:$CLIENT_PORT"
+  echo "done ($TARGET)."
 else
   echo "one or more services failed to start."
 fi
