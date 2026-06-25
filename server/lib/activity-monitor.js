@@ -58,6 +58,9 @@ export function startActivityMonitor(db, broadcast) {
     const now = Math.floor(Date.now() / 1000);
 
     for (const agent of agents) {
+      // Skip agents that self-report status via hook
+      if (agent.reported_status != null) continue;
+
       const session = live.get(agent.tmux_session);
       if (!session) continue;
 

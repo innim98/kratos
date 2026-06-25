@@ -111,6 +111,27 @@ curl -X PUT http://localhost:${port}/api/phase-documents/<DOC_ID> \\
   ${authHeader} \\
   -H "Content-Type: application/json" \\
   -d '{"status": "done"}'
+
+# ═══════════════════════════════════════════
+# STATUS HOOK (자동 알림)
+# ═══════════════════════════════════════════
+
+# 상태 보고 (working / idle)
+# idle 전환 시 Kratos가 자동으로 작업완료 알림 발생
+curl -X POST http://localhost:${port}/api/agents/status \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"status": "idle"}'
+
+# Claude Code hook 설정 (~/.claude/settings.json):
+# {
+#   "hooks": {
+#     "Stop": [{"matcher":"","hooks":[{"type":"command",
+#       "command":"curl -s -X POST http://localhost:${port}/api/agents/status -H \\"Authorization: Bearer ${token}\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}],
+#     "PreToolUse": [{"matcher":"","hooks":[{"type":"command",
+#       "command":"curl -s -X POST http://localhost:${port}/api/agents/status -H \\"Authorization: Bearer ${token}\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}]
+#   }
+# }
 `;
 
     reply.header('content-type', 'text/plain');

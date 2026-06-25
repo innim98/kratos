@@ -22,16 +22,16 @@ export default function Dashboard() {
   });
   const [doneAgents, setDoneAgents] = useState(new Set());
   const [silentDoneAgents, setSilentDoneAgents] = useState(new Set());
-  const [notifyFocusOnly, setNotifyFocusOnly] = useState(() =>
-    localStorage.getItem('kratos_notify_focus_only') === 'true'
+  const [notifyMode, setNotifyMode] = useState(() =>
+    localStorage.getItem('kratos_notify_mode') || 'all'
   );
 
   // Refs for WS handler to access latest state
   const selectedAgentIdRef = useRef(selectedAgentId);
-  const notifyFocusOnlyRef = useRef(notifyFocusOnly);
+  const notifyModeRef = useRef(notifyMode);
   const viewRef = useRef(view);
   useEffect(() => { selectedAgentIdRef.current = selectedAgentId; }, [selectedAgentId]);
-  useEffect(() => { notifyFocusOnlyRef.current = notifyFocusOnly; }, [notifyFocusOnly]);
+  useEffect(() => { notifyModeRef.current = notifyMode; }, [notifyMode]);
   useEffect(() => { viewRef.current = view; }, [view]);
 
   // Persist last view and agent to localStorage
@@ -45,8 +45,8 @@ export default function Dashboard() {
   }, [view, selectedAgentId]);
 
   useEffect(() => {
-    localStorage.setItem('kratos_notify_focus_only', String(notifyFocusOnly));
-  }, [notifyFocusOnly]);
+    localStorage.setItem('kratos_notify_mode', notifyMode);
+  }, [notifyMode]);
 
 
   // Request notification permission on mount
@@ -95,15 +95,17 @@ export default function Dashboard() {
 
       if (msg.type === 'agent-done') {
         setDoneAgents(prev => new Set(prev).add(msg.agentId));
-        const focusOnly = notifyFocusOnlyRef.current;
+        const mode = notifyModeRef.current;
         const selectedId = selectedAgentIdRef.current;
         const currentView = viewRef.current;
-        const shouldNotify = !focusOnly ||
-          (currentView === 'agent-detail' && msg.agentId === selectedId);
+        let shouldNotify = false;
+        if (mode === 'all') shouldNotify = true;
+        else if (mode === 'focus') shouldNotify = currentView === 'agent-detail' && msg.agentId === selectedId;
+        // mode === 'off' → shouldNotify stays false
         if (shouldNotify) {
           playNotificationSound();
           showBrowserNotification('Agent Done', `${msg.agentName} has completed work`);
-        } else {
+        } else if (mode !== 'off') {
           setSilentDoneAgents(prev => new Set(prev).add(msg.agentId));
         }
       }
@@ -230,8 +232,8 @@ export default function Dashboard() {
       onGoPhases={goPhases}
       onGoMenu={goMenu}
       silentDoneAgents={silentDoneAgents}
-      notifyFocusOnly={notifyFocusOnly}
-      onToggleNotifyFocusOnly={() => setNotifyFocusOnly(v => !v)}
+      notifyMode={notifyMode}
+      onCycleNotifyMode={() => setNotifyMode(m => m === 'all' ? 'focus' : m === 'focus' ? 'off' : 'all')}
     >
       {content}
     </Layout>

@@ -1,0 +1,2 @@
+ALTER TABLE agents ADD COLUMN reported_status TEXT DEFAULT NULL;
+ALTER TABLE agents ADD COLUMN last_status_at TEXT DEFAULT NULL;

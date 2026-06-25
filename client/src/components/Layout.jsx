@@ -4,7 +4,7 @@ import Sidebar from './Sidebar.jsx';
 import MobileNav from './MobileNav.jsx';
 import { isEmbed } from '../lib/embed.js';
 
-export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoPhases, onGoMenu, notifyFocusOnly, onToggleNotifyFocusOnly, children }) {
+export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAgents, onSelectAgent, onGoAgents, onGoSettings, onGoTodos, onGoPorts, onGoIssues, onGoPhases, onGoMenu, notifyMode, onCycleNotifyMode, children }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     localStorage.getItem('kratos_sidebar_collapsed') === 'true'
@@ -82,7 +82,7 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen">
-        <Header notifyFocusOnly={notifyFocusOnly} onToggleNotifyFocusOnly={onToggleNotifyFocusOnly} onGoHome={onGoMenu} />
+        <Header notifyMode={notifyMode} onCycleNotifyMode={onCycleNotifyMode} onGoHome={onGoMenu} />
         <MobileNav
           view={view}
           selectedAgentId={selectedAgentId}
@@ -106,7 +106,7 @@ export default function Layout({ view, selectedAgentId, doneAgents, silentDoneAg
 
   return (
     <div className="flex flex-col h-screen">
-      <Header notifyFocusOnly={notifyFocusOnly} onToggleNotifyFocusOnly={onToggleNotifyFocusOnly} onGoHome={onGoMenu} />
+      <Header notifyMode={notifyMode} onCycleNotifyMode={onCycleNotifyMode} onGoHome={onGoMenu} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           view={view}

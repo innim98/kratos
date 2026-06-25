@@ -127,6 +127,33 @@ export default async function agentRoutes(app) {
     return { ok: true };
   });
 
+  // Agent self-reports status via token
+  app.post('/api/agents/status', async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return reply.code(401).send({ error: 'Unauthorized' });
+    const token = authHeader.slice(7);
+    const agent = db.prepare('SELECT * FROM agents WHERE token = ?').get(token);
+    if (!agent) return reply.code(401).send({ error: 'Unauthorized' });
+
+    const { status } = request.body || {};
+    if (!['working', 'idle'].includes(status)) return reply.code(400).send({ error: 'status must be working or idle' });
+
+    const prevStatus = agent.reported_status;
+    db.prepare("UPDATE agents SET reported_status = ?, last_status_at = datetime('now') WHERE id = ?").run(status, agent.id);
+
+    // working → idle: fire agent-done
+    if (prevStatus === 'working' && status === 'idle') {
+      const wsData = JSON.stringify({ type: 'agent-done', agentId: agent.id, agentName: agent.name });
+      for (const client of app.websocketServer?.clients || []) {
+        if (client.readyState === 1) {
+          try { client.send(wsData); } catch {}
+        }
+      }
+    }
+
+    return { ok: true };
+  });
+
   app.delete('/api/agents/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params;
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
