@@ -26,6 +26,9 @@ export default function Dashboard() {
   const [notifyFocusOnly, setNotifyFocusOnly] = useState(() =>
     localStorage.getItem('kratos_notify_focus_only') === 'true'
   );
+  const [wheel2txt, setWheel2txt] = useState(() =>
+    localStorage.getItem('kratos_wheel2txt') === 'true'
+  );
 
   // Refs for WS handler to access latest state
   const selectedAgentIdRef = useRef(selectedAgentId);
@@ -48,6 +51,10 @@ export default function Dashboard() {
   useEffect(() => {
     localStorage.setItem('kratos_notify_focus_only', String(notifyFocusOnly));
   }, [notifyFocusOnly]);
+
+  useEffect(() => {
+    localStorage.setItem('kratos_wheel2txt', String(wheel2txt));
+  }, [wheel2txt]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -209,7 +216,7 @@ export default function Dashboard() {
 
   let content;
   if (view === 'agents') content = <AgentList onSelectAgent={selectAgent} />;
-  else if (view === 'agent-detail' && selectedAgentId) content = <AgentDetail agentId={selectedAgentId} onGoBack={goAgents} />;
+  else if (view === 'agent-detail' && selectedAgentId) content = <AgentDetail agentId={selectedAgentId} onGoBack={goAgents} wheel2txt={wheel2txt} />;
   else if (view === 'todos') content = <TodoList />;
   else if (view === 'ports') content = <PortsDashboard />;
   else if (view === 'issues') content = <Issues />;
@@ -235,6 +242,8 @@ export default function Dashboard() {
       silentDoneAgents={silentDoneAgents}
       notifyFocusOnly={notifyFocusOnly}
       onToggleNotifyFocusOnly={() => setNotifyFocusOnly(v => !v)}
+      wheel2txt={wheel2txt}
+      onToggleWheel2txt={() => setWheel2txt(v => !v)}
     >
       {content}
     </Layout>

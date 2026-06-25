@@ -29,8 +29,8 @@ const LEFT_TABS = ['terminal', 'files', 'text'];
 const RIGHT_TABS = ['files', 'text', 'todos', 'issues', 'chat'];
 
 
-function renderPanelContent(tab, agentId, termRef, agent, termKey) {
-  if (tab === 'terminal') return <TerminalPanel key={termKey} ref={termRef} agentId={agentId} />;
+function renderPanelContent(tab, agentId, termRef, agent, termKey, wheel2txt) {
+  if (tab === 'terminal') return <TerminalPanel key={termKey} ref={termRef} agentId={agentId} wheel2txt={wheel2txt} />;
   if (tab === 'files') return <FilesPanel agentId={agentId} />;
   if (tab === 'text') return <TextPanel agentId={agentId} />;
   if (tab === 'webview') return <WebviewPanel webview={agent?.webview} agentId={agentId} />;
@@ -40,7 +40,7 @@ function renderPanelContent(tab, agentId, termRef, agent, termKey) {
   return null;
 }
 
-export default function AgentDetail({ agentId, onGoBack }) {
+export default function AgentDetail({ agentId, onGoBack, wheel2txt }) {
   const [agent, setAgent] = useState(null);
   const [splitMode, setSplitMode] = useState(() =>
     localStorage.getItem('kratos_split_mode') || 'horizontal'
@@ -186,7 +186,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
     return (
       <div className="flex flex-col h-full">
         <PanelContent tabs={EMBED_TABS} activeTab={mobileTab} onTabChange={setMobileTab} leftAction={backBtn} actions={<><button onClick={() => setTermKey(k => k + 1)} className="flex items-center px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50" title="Reconnect terminal"><RefreshCw className="h-3.5 w-3.5" /></button><UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} /></>}>
-          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey)}
+          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey, wheel2txt)}
         </PanelContent>
       </div>
     );
@@ -224,7 +224,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
         </div>
         <AgentStatusDialog agent={agent} open={statusOpen} onOpenChange={setStatusOpen} />
         <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<><button onClick={() => setTermKey(k => k + 1)} className="flex items-center px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50" title="Reconnect terminal"><RefreshCw className="h-3.5 w-3.5" /></button><UploadForAgent agentId={agentId} onSendToTerminal={(path) => termRef.current?.sendInput(path)} /></>}>
-          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey)}
+          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey, wheel2txt)}
         </PanelContent>
       </div>
     );
@@ -348,7 +348,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
               </div>
               <div className="flex-1 min-h-0">
                 {ideBottomTab === 'terminal'
-                  ? <TerminalPanel key={termKey} ref={termRef} agentId={agentId} />
+                  ? <TerminalPanel key={termKey} ref={termRef} agentId={agentId} wheel2txt={wheel2txt} />
                   : <TextPanel agentId={agentId} />
                 }
               </div>
@@ -364,7 +364,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
 
   const leftPanel = (
     <PanelContent tabs={LEFT_TABS} activeTab={leftTab} onTabChange={setLeftTab} actions={uploadActions}>
-      {renderPanelContent(leftTab, agentId, termRef, agent, termKey)}
+      {renderPanelContent(leftTab, agentId, termRef, agent, termKey, wheel2txt)}
     </PanelContent>
   );
 

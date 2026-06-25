@@ -69,7 +69,7 @@ function loadDraft(agentId) {
   return localStorage.getItem(`kratos_input_draft_${agentId}`) || '';
 }
 
-const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
+const TerminalPanel = forwardRef(function TerminalPanel({ agentId, wheel2txt }, ref) {
   const containerRef = useRef(null);
   const termRef = useRef(null);
   const wsRef = useRef(null);
@@ -84,6 +84,14 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
   const [voiceProcessing, setVoiceProcessing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  // Text mode state
+  const [textMode, setTextMode] = useState(false);
+  const [textContent, setTextContent] = useState('');
+  const textRef = useRef(null);
+  const touchStartRef = useRef(null);
+  const atBottomRef = useRef(false);
+  const pollRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
     sendInput(text) {
@@ -149,6 +157,95 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
       window.removeEventListener('beforeunload', save);
     };
   }, [agentId]);
+
+  // --- Text mode ---
+  const loadTextContent = async () => {
+    const res = await apiFetch(`/api/agents/${agentId}/terminal/text`);
+    if (res.ok) {
+      const data = await res.json();
+      setTextContent(prev => prev === data.text ? prev : data.text);
+    }
+  };
+
+  const enterTextMode = () => {
+    setTextMode(true);
+    atBottomRef.current = false;
+    loadTextContent();
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(loadTextContent, 5000);
+  };
+
+  const exitTextMode = () => {
+    setTextMode(false);
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  // Auto-scroll text to bottom on content change
+  useEffect(() => {
+    if (textMode && textRef.current) {
+      textRef.current.scrollTop = textRef.current.scrollHeight;
+    }
+  }, [textContent, textMode]);
+
+  // Desktop: wheel handler on xterm container
+  useEffect(() => {
+    if (isMobile || !wheel2txt || textMode) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (e.deltaY < 0) { // wheel up
+        e.preventDefault();
+        enterTextMode();
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [isMobile, wheel2txt, textMode, agentId]);
+
+  // Text mode: detect bottom + extra wheel down → exit
+  useEffect(() => {
+    if (!textMode || !textRef.current) return;
+    const el = textRef.current;
+    const onScroll = () => {
+      const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+      if (!isAtBottom) atBottomRef.current = false;
+    };
+    const onWheel = (e) => {
+      if (e.deltaY > 0) { // wheel down
+        const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+        if (isAtBottom && atBottomRef.current) {
+          exitTextMode();
+          return;
+        }
+        if (isAtBottom) atBottomRef.current = true;
+      } else {
+        atBottomRef.current = false;
+      }
+    };
+    el.addEventListener('scroll', onScroll);
+    el.addEventListener('wheel', onWheel);
+    return () => { el.removeEventListener('scroll', onScroll); el.removeEventListener('wheel', onWheel); };
+  }, [textMode]);
+
+  // Mobile: swipe down on xterm container → text mode
+  useEffect(() => {
+    if (!isMobile || textMode) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const onTouchStart = (e) => { touchStartRef.current = e.touches[0].clientY; };
+    const onTouchEnd = (e) => {
+      if (touchStartRef.current == null) return;
+      const dy = e.changedTouches[0].clientY - touchStartRef.current;
+      touchStartRef.current = null;
+      if (dy > 80) enterTextMode();
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchend', onTouchEnd); };
+  }, [isMobile, textMode, agentId]);
 
   // Voice recording
   const startRecording = async () => {
@@ -298,10 +395,40 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
 
   return (
     <div className="flex flex-col w-full h-full min-h-0">
+      {/* Text mode overlay */}
+      {textMode && (
+        <div className="flex flex-col flex-1 min-h-0" style={{ background: '#151515' }}>
+          <div className="flex items-center justify-between px-3 py-1 shrink-0" style={{ background: '#1a1a1a', borderBottom: '1px solid #333' }}>
+            <span className="text-[10px]" style={{ color: '#888' }}>TEXT MODE</span>
+            <button
+              onClick={exitTextMode}
+              className="text-[10px] px-2 py-0.5 rounded hover:bg-white/10"
+              style={{ color: '#888' }}
+            >
+              tap to return
+            </button>
+          </div>
+          <pre
+            ref={textRef}
+            onClick={isMobile ? exitTextMode : undefined}
+            className="flex-1 overflow-auto p-3 whitespace-pre-wrap break-words select-text"
+            style={{
+              background: '#151515',
+              color: '#e0e0e0',
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace",
+              fontSize: '13px',
+              lineHeight: '1.4',
+            }}
+          >
+            {textContent || 'Loading...'}
+          </pre>
+        </div>
+      )}
+
       {/* Terminal */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0"
+        className={cn('flex-1 min-h-0', textMode && 'hidden')}
         style={{ background: '#0a0a0a' }}
       />
 

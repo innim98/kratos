@@ -1,9 +1,9 @@
 import { useAuth } from '../lib/auth.jsx';
 import { Button } from './ui/button.jsx';
 import { cn } from '../lib/utils.js';
-import { LogOut, BellRing } from 'lucide-react';
+import { LogOut, BellRing, MousePointer2 } from 'lucide-react';
 
-export default function Header({ notifyFocusOnly, onToggleNotifyFocusOnly, onGoHome }) {
+export default function Header({ notifyFocusOnly, onToggleNotifyFocusOnly, wheel2txt, onToggleWheel2txt, onGoHome }) {
   const { user, logout } = useAuth();
 
   return (
@@ -11,6 +11,32 @@ export default function Header({ notifyFocusOnly, onToggleNotifyFocusOnly, onGoH
       <button onClick={onGoHome} className="text-lg font-bold text-primary hover:opacity-80 transition-opacity">Kratos</button>
       {user && (
         <div className="flex items-center gap-3">
+          <button
+            onClick={onToggleWheel2txt}
+            className={cn(
+              'hidden md:flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors',
+              wheel2txt
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+            )}
+            title={wheel2txt ? 'Wheel→Text: ON' : 'Wheel→Text: OFF'}
+          >
+            <MousePointer2 className="h-3.5 w-3.5" />
+            <span>W2T</span>
+            <span
+              className={cn(
+                'w-8 h-4 rounded-full relative inline-flex transition-colors',
+                wheel2txt ? 'bg-primary' : 'bg-muted-foreground/30'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform',
+                  wheel2txt ? 'translate-x-4' : 'translate-x-0'
+                )}
+              />
+            </span>
+          </button>
           <button
             onClick={onToggleNotifyFocusOnly}
             className={cn(
@@ -25,14 +51,14 @@ export default function Header({ notifyFocusOnly, onToggleNotifyFocusOnly, onGoH
             <span className="hidden sm:inline">{notifyFocusOnly ? 'Focus' : 'All'}</span>
             <span
               className={cn(
-                'w-7 h-4 rounded-full relative transition-colors',
+                'w-8 h-4 rounded-full relative inline-flex transition-colors',
                 notifyFocusOnly ? 'bg-primary' : 'bg-muted-foreground/30'
               )}
             >
               <span
                 className={cn(
-                  'absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform',
-                  notifyFocusOnly ? 'translate-x-3.5' : 'translate-x-0.5'
+                  'absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform',
+                  notifyFocusOnly ? 'translate-x-4' : 'translate-x-0'
                 )}
               />
             </span>
