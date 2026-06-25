@@ -198,9 +198,9 @@ export default function AgentDetail({ agentId, onGoBack }) {
           {agent && (
             <button
               onClick={() => setStatusOpen(true)}
-              className={cn('inline-flex items-center gap-1 text-xs', agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}
+              className={cn('inline-flex items-center gap-1 text-xs', agent.status === 'working' ? 'text-emerald-500' : agent.status === 'idle' ? 'text-yellow-500' : agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}
             >
-              <span className={cn('h-1.5 w-1.5 rounded-full', agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+              <span className={cn('h-1.5 w-1.5 rounded-full', agent.status === 'working' ? 'bg-emerald-500 animate-pulse' : agent.status === 'idle' ? 'bg-yellow-500' : agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
               {agent.status}
             </button>
           )}
@@ -251,10 +251,10 @@ export default function AgentDetail({ agentId, onGoBack }) {
         {agent && !editing && (
           <button
             onClick={() => setStatusOpen(true)}
-            className={cn('inline-flex items-center gap-1 text-xs cursor-pointer hover:underline', agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}
+            className={cn('inline-flex items-center gap-1 text-xs cursor-pointer hover:underline', agent.status === 'working' ? 'text-emerald-500' : agent.status === 'idle' ? 'text-yellow-500' : agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground')}
             title="View agent details"
           >
-            <span className={cn('h-1.5 w-1.5 rounded-full', agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
+            <span className={cn('h-1.5 w-1.5 rounded-full', agent.status === 'working' ? 'bg-emerald-500 animate-pulse' : agent.status === 'idle' ? 'bg-yellow-500' : agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
             {agent.status}
           </button>
         )}
