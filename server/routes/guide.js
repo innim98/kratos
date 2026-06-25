@@ -132,6 +132,10 @@ curl -X POST http://localhost:${port}/api/agents/status \\
 #       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}],
 #     "PermissionRequest": [{"matcher":"","hooks":[{"type":"command",
 #       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"asking_permission\\"}'"}]}],
+#     "PostToolUse": [{"matcher":"","hooks":[{"type":"command",
+#       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}],
+#     "PermissionDenied": [{"matcher":"","hooks":[{"type":"command",
+#       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"working\\"}'"}]}],
 #     "Stop": [{"matcher":"","hooks":[{"type":"command",
 #       "command":"curl -s -X POST http://localhost:$(tmux show-environment KRATOS_PORT 2>/dev/null | cut -d= -f2-)/api/agents/status -H \\"Authorization: Bearer $(tmux show-environment KRATOS_TOKEN 2>/dev/null | cut -d= -f2-)\\" -H \\"Content-Type: application/json\\" -d '{\\"status\\":\\"idle\\"}'"}]}]
 #   }
