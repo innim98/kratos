@@ -158,14 +158,18 @@ export default async function wsRoutes(app) {
           // tmux session might not exist
         }
 
-        // Spawn tmux attach via PTY
+        // Spawn tmux attach via PTY.
+        // If the session is gone (e.g. tmux server died on reboot), recreate it
+        // in the agent's original folder — not the server's HOME — so the
+        // terminal starts where it was configured.
         try {
           const shell = process.env.SHELL || '/bin/zsh';
-          ptyProcess = pty.spawn(shell, ['-c', `tmux attach -dt ${agent.tmux_session} || tmux new-session -As ${agent.tmux_session}`], {
+          const startDir = agent.folder || process.env.HOME;
+          ptyProcess = pty.spawn(shell, ['-c', `tmux attach -dt ${agent.tmux_session} || tmux new-session -As ${agent.tmux_session} -c ${startDir}`], {
             name: 'xterm-256color',
             cols: msg.cols || 80,
             rows: msg.rows || 24,
-            cwd: process.env.HOME,
+            cwd: startDir,
             env: { ...process.env, TERM: 'xterm-256color', PORT: '', CLIENT_PORT: '' },
           });
         } catch (e) {

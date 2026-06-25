@@ -226,7 +226,14 @@ export default async function agentRoutes(app) {
       return reply.code(404).send({ error: 'Agent not found' });
     }
 
-    db.prepare('DELETE FROM agents WHERE id = ?').run(id);
+    try {
+      db.prepare('DELETE FROM agents WHERE id = ?').run(id);
+    } catch (e) {
+      if (e.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') {
+        return reply.code(409).send({ error: 'Agent is still referenced by other records and cannot be deleted' });
+      }
+      throw e;
+    }
     return { ok: true };
   });
 }
