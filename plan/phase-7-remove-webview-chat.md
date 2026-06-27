@@ -170,3 +170,5 @@ DROP TABLE IF EXISTS chats;
 
 ### 참고
 - 코드 삭제 변경은 단일 브랜치 커밋 권장(롤백 용이). `012_drop_chat_tables.sql`는 데이터 파괴적이므로 운영 DB 적용 전 백업 필수.
+
+## Status: DONE (2026-06-25)

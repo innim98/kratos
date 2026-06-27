@@ -251,3 +251,5 @@ function notifyAgent(tmuxSession, chatId, senderName) {
 # 💬 @hotel-agent: New message on Kratos chat #42 from admin
 # Read: curl -s -H "Authorization: Bearer $TOKEN" http://localhost:15001/api/chats/42/messages?after=<last_id> | jq
 ```
+
+## Status: DEPRECATED (Phase 7에서 제거됨, 2026-06-25)
