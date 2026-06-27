@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import crypto from 'crypto';
 import { getTmuxSessions } from '../lib/tmux.js';
 import { processStatusChange } from '../lib/status-subscriptions.js';
+import { deliverMessages } from '../lib/agent-talk.js';
 
 
 export default async function agentRoutes(app) {
@@ -170,6 +171,11 @@ export default async function agentRoutes(app) {
 
     // Notify orchestrator subscribers (deferred until they are idle)
     try { processStatusChange(db, agent, status); } catch {}
+
+    // Flush any pending agent-talk messages now that this agent is idle
+    if (status === 'idle') {
+      try { deliverMessages(db, { ...agent, reported_status: status }); } catch {}
+    }
 
     return { ok: true };
   });

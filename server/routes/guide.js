@@ -164,6 +164,41 @@ curl -X DELETE http://localhost:${port}/api/agents/subscribe-status \\
   ${authHeader} \\
   -H "Content-Type: application/json" \\
   -d '{"status": "asking_permission"}'
+
+# ═══════════════════════════════════════════
+# AGENT TALK (에이전트 간 메시지)
+# ═══════════════════════════════════════════
+
+# 메시지를 받으려면 두 가지가 필요합니다:
+#   ① 상태 hook 등록 (위 STATUS HOOK 섹션) — online/offline 상태면 수신 불가
+#   ② 아래 옵트인 호출
+curl -X POST http://localhost:${port}/api/messages/subscribe ${authHeader}
+
+# ── 상대 찾기 (전체 에이전트 id/name) ──
+curl -s http://localhost:${port}/api/agents/directory ${authHeader} | jq
+
+# ── 메시지 보내기 (Kratos가 내 명의로 저장) ──
+curl -X POST http://localhost:${port}/api/messages \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"to": <RECEIVER_ID>, "body": "리뷰 부탁해요"}'
+#   → { "ok": true, "message_id": "<uuid>" }
+
+# ── 수신 흐름 ──
+# 내가 idle 일 때 tmux 로 아래 알림이 도착합니다:
+#   (From Kratos : Kratos sent this at <unix>) message from <sender-id> is received — oldest unread <message-id> @ <unix>
+#   (안 읽은 메시지가 쌓여도 한 번만 옴)
+# 알림을 받으면 대화 목록을 조회하세요 (all = 전체, unread = 신규):
+curl -s "http://localhost:${port}/api/messages?from=<SENDER_ID>&to=${id}" ${authHeader} | jq
+
+# ── 읽음 처리 (read 단방향) ──
+curl -X PUT http://localhost:${port}/api/messages/read \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"from": <SENDER_ID>}'
+
+# ── 수신 옵트인 해제 ──
+curl -X DELETE http://localhost:${port}/api/messages/subscribe ${authHeader}
 `;
 
     reply.header('content-type', 'text/plain');
