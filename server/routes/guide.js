@@ -1,5 +1,24 @@
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MSG_SCRIPT_PATH = join(__dirname, '..', 'templates', 'kratos-msg.sh');
+
 export default async function guideRoutes(app) {
   const { db } = app;
+
+  // Serve the agent-talk helper script (verbatim bash, no secrets — reads
+  // token/port from tmux env). Agents save it and allowlist it to avoid
+  // per-call approval prompts.
+  app.get('/api/agents/msg-script', async (request, reply) => {
+    try {
+      reply.header('content-type', 'text/plain');
+      return reply.send(readFileSync(MSG_SCRIPT_PATH, 'utf8'));
+    } catch {
+      return reply.code(500).send({ error: 'script unavailable' });
+    }
+  });
 
   // Serve API guide as plain text — agent token required or localhost
   app.get('/api/agents/:id/guide', async (request, reply) => {
@@ -174,30 +193,37 @@ curl -X DELETE http://localhost:${port}/api/agents/subscribe-status \\
 #   ② 아래 옵트인 호출
 curl -X POST http://localhost:${port}/api/messages/subscribe ${authHeader}
 
+# ═══ 추천: 헬퍼 스크립트 (매번 승인 안 받게) ═══
+# curl POST 는 호출마다 승인이 필요해 번거롭습니다. 아래 스크립트를 한 번 설치하고
+# .claude/settings.local.json 에 allowlist 하면 승인 없이 송수신할 수 있습니다.
+mkdir -p scripts && curl -s http://localhost:${port}/api/agents/msg-script -o scripts/kratos-msg.sh && chmod +x scripts/kratos-msg.sh
+# .claude/settings.local.json 에 추가:
+#   { "permissions": { "allow": ["Bash(bash scripts/kratos-msg.sh:*)"] } }
+# 사용:
+#   bash scripts/kratos-msg.sh whoami                 # 내 id/name
+#   bash scripts/kratos-msg.sh send <to-id> "본문"     # 전송
+#   bash scripts/kratos-msg.sh read <from-id>         # 미읽음 출력 + 읽음 처리
+
 # ── 상대 찾기 (전체 에이전트 id/name) ──
 curl -s http://localhost:${port}/api/agents/directory ${authHeader} | jq
 
-# ── 메시지 보내기 (Kratos가 내 명의로 저장) ──
-curl -X POST http://localhost:${port}/api/messages \\
-  ${authHeader} \\
+# ── 직접 호출 (스크립트 없이) ──
+# 보내기 — 본문에 따옴표/줄바꿈이 있으면 jq 로 만들어야 안전합니다:
+curl -s -X POST http://localhost:${port}/api/messages ${authHeader} \\
   -H "Content-Type: application/json" \\
-  -d '{"to": <RECEIVER_ID>, "body": "리뷰 부탁해요"}'
+  -d "$(jq -n --arg to <RECEIVER_ID> --arg b "리뷰 부탁해요" '{to:(\$to|tonumber), body:\$b}')"
 #   → { "ok": true, "message_id": "<uuid>" }
 
-# ── 수신 흐름 ──
-# 내가 idle 일 때 tmux 로 아래 알림이 도착합니다:
+# 수신: 내가 idle 일 때 tmux 로 아래 알림이 도착합니다 (쌓여도 한 번만):
 #   (From Kratos : Kratos sent this at <unix>) message from <sender-id> is received — oldest unread <message-id> @ <unix>
-#   (안 읽은 메시지가 쌓여도 한 번만 옴)
-# 알림을 받으면 대화 목록을 조회하세요 (all = 전체, unread = 신규):
-curl -s "http://localhost:${port}/api/messages?from=<SENDER_ID>&to=${id}" ${authHeader} | jq
+# 알림을 받으면 대화 목록 조회 (to 생략 시 '나'로 간주, all=전체 / unread=신규):
+curl -s "http://localhost:${port}/api/messages?from=<SENDER_ID>" ${authHeader} | jq
 
-# ── 읽음 처리 (read 단방향) ──
-curl -X PUT http://localhost:${port}/api/messages/read \\
-  ${authHeader} \\
-  -H "Content-Type: application/json" \\
-  -d '{"from": <SENDER_ID>}'
+# 읽음 처리 (read 단방향):
+curl -s -X PUT http://localhost:${port}/api/messages/read ${authHeader} \\
+  -H "Content-Type: application/json" -d '{"from": <SENDER_ID>}'
 
-# ── 수신 옵트인 해제 ──
+# 수신 옵트인 해제:
 curl -X DELETE http://localhost:${port}/api/messages/subscribe ${authHeader}
 `;
 

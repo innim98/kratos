@@ -199,4 +199,17 @@ curl -X DELETE http://localhost:${port}/api/messages/subscribe ${authHeader}
 - `server/routes/guide.js` — "AGENT TALK" 가이드 섹션 (API Guide 버튼 노출)
 - `server/index.js` — 라우트 등록
 
+## 후속 보강 (2026-06-28) — 헬퍼 스크립트 + self-id 제거
+
+에이전트가 메시지 전송마다 `curl` 승인을 받는 번거로움 해소:
+- `GET /api/agents/me` — 토큰으로 내 `{id, name}` 조회 (자기 id를 몰라도 됨)
+- `GET /api/messages` 의 `to` 생략 시 토큰 주인으로 기본값 (대화 조회에 self-id 불필요)
+- **헬퍼 스크립트** `server/templates/kratos-msg.sh` 를 `GET /api/agents/msg-script`로 제공.
+  에이전트가 `curl -o scripts/kratos-msg.sh` 후 `.claude/settings.local.json`에
+  `"Bash(bash scripts/kratos-msg.sh:*)"` allowlist → 승인 없이 송수신.
+  - `send <to> "본문"` / `read <from>` / `whoami`
+  - 본문은 `jq -n --arg` 로 안전하게 JSON 구성 (따옴표·줄바꿈 escape) — 직접 curl 예시도 jq로 교체
+- 가이드("API Guide" 버튼) AGENT TALK 섹션에 헬퍼 설치/allowlist/사용법 포함
+- 검증: me/`to`생략 조회/msg-script 제공/`bash -n` 문법/실 tmux 세션에서 whoami·send 동작·DB 저장 확인, 서버 테스트 85개 무회귀
+
 ## Status: DONE (2026-06-28)

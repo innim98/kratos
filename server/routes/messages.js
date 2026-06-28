@@ -11,6 +11,13 @@ export default async function messageRoutes(app) {
     return db.prepare('SELECT * FROM agents WHERE token = ?').get(h.slice(7));
   };
 
+  // "Who am I" — lets an agent learn its own id from its token.
+  app.get('/api/agents/me', async (request, reply) => {
+    const me = authAgent(request);
+    if (!me) return reply.code(401).send({ error: 'Unauthorized' });
+    return { id: me.id, name: me.name };
+  });
+
   // Directory of all agents (id + name) so agents can address each other.
   app.get('/api/agents/directory', async (request, reply) => {
     if (!authAgent(request)) return reply.code(401).send({ error: 'Unauthorized' });
@@ -47,9 +54,11 @@ export default async function messageRoutes(app) {
     if (!me) return reply.code(401).send({ error: 'Unauthorized' });
 
     const from = parseInt(request.query.from, 10);
-    const to = parseInt(request.query.to, 10);
+    // `to` defaults to the caller (the common "read my inbox from X" case),
+    // so an agent never needs to know its own numeric id.
+    const to = request.query.to !== undefined ? parseInt(request.query.to, 10) : me.id;
     if (!Number.isInteger(from) || !Number.isInteger(to)) {
-      return reply.code(400).send({ error: 'from and to (agent ids) are required' });
+      return reply.code(400).send({ error: 'from (agent id) is required' });
     }
     if (me.id !== from && me.id !== to) {
       return reply.code(403).send({ error: 'Not a party to this conversation' });
