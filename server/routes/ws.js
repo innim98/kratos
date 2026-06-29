@@ -165,6 +165,15 @@ export default async function wsRoutes(app) {
         try {
           const shell = process.env.SHELL || '/bin/zsh';
           const startDir = agent.folder || process.env.HOME;
+          // Ensure the session exists (in the right folder) and carries the
+          // Kratos env BEFORE attaching. Recreated sessions otherwise come back
+          // without KRATOS_TOKEN/PORT, breaking the agent's status/message hooks.
+          const kratosPort = app.server?.address()?.port || process.env.PORT || 15001;
+          try {
+            execSync(`tmux has-session -t ${agent.tmux_session} 2>/dev/null || tmux new-session -d -s ${agent.tmux_session} -c ${startDir}`, { timeout: 5000 });
+            execSync(`tmux set-environment -t ${agent.tmux_session} KRATOS_TOKEN ${agent.token}`, { timeout: 3000 });
+            execSync(`tmux set-environment -t ${agent.tmux_session} KRATOS_PORT ${kratosPort}`, { timeout: 3000 });
+          } catch {}
           ptyProcess = pty.spawn(shell, ['-c', `tmux attach -dt ${agent.tmux_session} || tmux new-session -As ${agent.tmux_session} -c ${startDir}`], {
             name: 'xterm-256color',
             cols: msg.cols || 80,
