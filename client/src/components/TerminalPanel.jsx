@@ -168,9 +168,8 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
 
   const enterTextMode = () => {
     setTextMode(true);
+    // Snapshot only: capture the terminal text at entry, no auto-refresh.
     loadTextContent();
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(loadTextContent, 5000);
   };
 
   const exitTextMode = () => {
