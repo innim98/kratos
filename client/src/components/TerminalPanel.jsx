@@ -87,6 +87,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
 
   // Text mode state
   const [textMode, setTextMode] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [textContent, setTextContent] = useState('');
   const textRef = useRef(null);
   const pollRef = useRef(null);
@@ -98,6 +99,13 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'input', data: text }));
       }
+    },
+    insertToInput(text) {
+      const input = inputRef.current;
+      if (!input) return;
+      input.value = input.value ? `${input.value} ${text}` : text;
+      saveDraft(agentId, input.value);
+      input.focus();
     },
   }));
 
@@ -112,6 +120,37 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'input', data }));
     }
+  };
+
+  // Drag-and-drop a local file onto the terminal → upload to the agent's dir,
+  // then type the resulting path(s) straight into the terminal. (Browsers hide
+  // the original local path, so we upload and use the server-side path.)
+  const uploadDroppedFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return [];
+    const fd = new FormData();
+    for (const f of files) fd.append('files', f);
+    try {
+      const res = await fetch(`/api/agents/${agentId}/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: fd,
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.files || []).map(f => f.path);
+    } catch { return []; }
+  };
+
+  const hasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+  const handleTermDragOver = (e) => { if (hasFiles(e)) { e.preventDefault(); setDragOver(true); } };
+  const handleTermDragLeave = (e) => { if (e.currentTarget === e.target) setDragOver(false); };
+  const handleTermDrop = async (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    setDragOver(false);
+    const paths = await uploadDroppedFiles(e.dataTransfer.files);
+    if (paths.length) wsSend(paths.join(' ') + ' ');
   };
 
   const handleInputSend = () => {
@@ -375,12 +414,24 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
       )}
 
       {/* Terminal */}
-      <div className={cn('flex-1 min-h-0 relative', textMode && 'hidden')}>
+      <div
+        className={cn('flex-1 min-h-0 relative', textMode && 'hidden')}
+        onDragOver={handleTermDragOver}
+        onDragLeave={handleTermDragLeave}
+        onDrop={handleTermDrop}
+      >
         <div
           ref={containerRef}
           className="absolute inset-0"
           style={{ background: '#0a0a0a' }}
         />
+        {dragOver && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-primary/20 border-2 border-dashed border-primary pointer-events-none">
+            <span className="text-sm font-medium text-primary bg-background/85 px-3 py-1.5 rounded shadow">
+              여기에 놓으면 업로드 후 경로를 터미널에 입력
+            </span>
+          </div>
+        )}
         {(
           <div
             className="absolute top-0 right-0 w-[40px] h-full flex items-center justify-center z-10 touch-none"
