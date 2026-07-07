@@ -144,7 +144,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
 
   const hasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
   const handleTermDragOver = (e) => { if (hasFiles(e)) { e.preventDefault(); setDragOver(true); } };
-  const handleTermDragLeave = (e) => { if (e.currentTarget === e.target) setDragOver(false); };
+  const handleTermDragLeave = (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); };
   const handleTermDrop = async (e) => {
     if (!hasFiles(e)) return;
     e.preventDefault();
@@ -152,6 +152,19 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
     const paths = await uploadDroppedFiles(e.dataTransfer.files);
     if (paths.length) wsSend(paths.join(' ') + ' ');
   };
+
+  // Safety net: clear the drag overlay whenever a drag ends anywhere on the
+  // page (e.g. the file was dropped on the up4agent button, not the terminal),
+  // otherwise the overlay can get stuck visible.
+  useEffect(() => {
+    const clear = () => setDragOver(false);
+    window.addEventListener('drop', clear);
+    window.addEventListener('dragend', clear);
+    return () => {
+      window.removeEventListener('drop', clear);
+      window.removeEventListener('dragend', clear);
+    };
+  }, []);
 
   const handleInputSend = () => {
     const input = inputRef.current;

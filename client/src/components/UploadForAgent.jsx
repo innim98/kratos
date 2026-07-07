@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { getToken } from '../lib/api.js';
 import { cn, copyText } from '../lib/utils.js';
 import { Upload, Check, Copy, CornerDownLeft } from 'lucide-react';
@@ -28,6 +28,17 @@ export default function UploadForAgent({ agentId, onSendToInput }) {
     setDragOver(false);
     doUpload(e.dataTransfer.files);
   };
+
+  // Clear the drag highlight if the drag ends elsewhere on the page.
+  useEffect(() => {
+    const clear = () => setDragOver(false);
+    window.addEventListener('drop', clear);
+    window.addEventListener('dragend', clear);
+    return () => {
+      window.removeEventListener('drop', clear);
+      window.removeEventListener('dragend', clear);
+    };
+  }, []);
 
   const handleUpload = (e) => doUpload(e.target.files);
 
