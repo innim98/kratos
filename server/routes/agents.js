@@ -110,9 +110,38 @@ export default async function agentRoutes(app) {
     if ('issue_project' in (request.body || {})) {
       db.prepare('UPDATE agents SET issue_project = ? WHERE id = ?').run(issue_project || null, id);
     }
+    if ('is_manager' in (request.body || {})) {
+      db.prepare('UPDATE agents SET is_manager = ? WHERE id = ?').run(request.body.is_manager ? 1 : 0, id);
+    }
 
     const updated = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
     return updated;
+  });
+
+  // Manager agent sets a nickname (<=10 chars) on any agent. Auth: agent token
+  // whose owner has is_manager=1. Empty string / null clears the nickname.
+  app.put('/api/agents/:id/nickname', async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return reply.code(401).send({ error: 'Unauthorized' });
+
+    const caller = db.prepare('SELECT * FROM agents WHERE token = ?').get(token);
+    if (!caller) return reply.code(401).send({ error: 'Unauthorized' });
+    if (caller.is_manager !== 1) return reply.code(403).send({ error: 'Manager agents only' });
+
+    const { id } = request.params;
+    const target = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+    if (!target) return reply.code(404).send({ error: 'Agent not found' });
+
+    let { nickname } = request.body || {};
+    if (nickname === null || nickname === undefined) nickname = '';
+    if (typeof nickname !== 'string') return reply.code(400).send({ error: 'nickname must be a string' });
+    nickname = nickname.trim();
+    if (nickname.length > 10) return reply.code(400).send({ error: 'nickname must be 10 characters or fewer' });
+
+    const value = nickname === '' ? null : nickname;
+    db.prepare('UPDATE agents SET nickname = ? WHERE id = ?').run(value, id);
+    return { ok: true, id: Number(id), nickname: value };
   });
 
   app.put('/api/agents/:id/order', { preHandler: authenticate }, async (request, reply) => {

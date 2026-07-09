@@ -33,6 +33,16 @@ export default function AgentList({ onSelectAgent }) {
     loadAgents();
   };
 
+  const toggleManager = async (e, a) => {
+    e.stopPropagation();
+    await apiFetch(`/api/agents/${a.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_manager: !a.is_manager }),
+    });
+    loadAgents();
+  };
+
   const timeAgo = (ts) => {
     if (!ts) return '';
     const diff = Math.floor(Date.now() / 1000 - ts);
@@ -86,11 +96,21 @@ export default function AgentList({ onSelectAgent }) {
                 <span className={`h-2.5 w-2.5 rounded-full ${a.status === 'working' ? 'bg-emerald-500 animate-pulse' : a.status === 'ask' ? 'bg-purple-500 animate-pulse' : a.status === 'idle' ? 'bg-yellow-500' : a.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
                 <div>
                   <span className="font-medium">{a.name}</span>
+                  {a.nickname && <span className="text-xs text-muted-foreground/70 ml-2">{a.nickname}</span>}
                   <span className="text-xs text-muted-foreground ml-2 font-mono">{a.tmux_session}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Badge variant={a.status === 'offline' ? 'secondary' : 'success'}>{a.status}</Badge>
+                <Button
+                  variant={a.is_manager ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className={cn('h-6 w-6 text-xs font-semibold', a.is_manager ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground')}
+                  onClick={(e) => toggleManager(e, a)}
+                  title={a.is_manager ? 'Unset manager' : 'Set as manager'}
+                >
+                  M
+                </Button>
                 <span className="text-xs text-muted-foreground w-16 text-right">{timeAgo(a.lastActivity)}</span>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={(e) => handleDelete(e, a.id)}>
                   <Trash2 className="h-4 w-4" />

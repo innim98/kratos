@@ -15,7 +15,7 @@ export default async function messageRoutes(app) {
   app.get('/api/agents/me', async (request, reply) => {
     const me = authAgent(request);
     if (!me) return reply.code(401).send({ error: 'Unauthorized' });
-    return { id: me.id, name: me.name };
+    return { id: me.id, name: me.name, is_manager: me.is_manager };
   });
 
   // Directory of all agents (id + name) so agents can address each other.

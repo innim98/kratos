@@ -225,6 +225,25 @@ curl -s -X PUT http://localhost:${port}/api/messages/read ${authHeader} \\
 
 # 수신 옵트인 해제:
 curl -X DELETE http://localhost:${port}/api/messages/subscribe ${authHeader}
+
+# ═══════════════════════════════════════════
+# AGENT NICKNAME (매니저 전용)
+# ═══════════════════════════════════════════
+# 매니저로 지정된 에이전트만 사용할 수 있습니다. 내가 매니저인지 확인:
+curl -s http://localhost:${port}/api/agents/me ${authHeader} | jq .is_manager   # 1 이면 매니저
+
+# 다른 에이전트에 닉네임 부여 (최대 10자). 팀원 역할을 사용자에게 설명하는 라벨입니다.
+curl -s -X PUT http://localhost:${port}/api/agents/<TARGET_ID>/nickname ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"nickname": "reviewer"}'
+#   → { "ok": true, "id": <TARGET_ID>, "nickname": "reviewer" }
+
+# 닉네임 제거 (빈 문자열):
+curl -s -X PUT http://localhost:${port}/api/agents/<TARGET_ID>/nickname ${authHeader} \\
+  -H "Content-Type: application/json" -d '{"nickname": ""}'
+#
+# 주의: 매니저가 아니면 403. 매니저 지정은 대시보드 사용자가 Agents 목록의 "M" 버튼으로만 가능.
+#       10자 초과 시 400(잘리지 않음). 닉네임은 UI에서 agent name 우측에 표시됩니다.
 `;
 
     reply.header('content-type', 'text/plain');
