@@ -390,6 +390,27 @@ admin만 다른 사용자를 추가/삭제할 수 있다.
 
 - `max_agents_per_folder`: 매니저가 폴더당 생성 가능한 에이전트 상한. 기본 4. Settings 화면(admin)에서 변경.
 
+### 2.6 Phase API (phases / phase-documents)
+
+프로젝트별 Phase와 그에 딸린 문서(에이전트가 산출한 계획/기획 문서)를 관리한다.
+모든 엔드포인트는 `authenticateAny` — **JWT 또는 agent token** 모두 허용.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/phases` | JWT / agent token | Phase 목록 (`?project_code=` 필터). 각 phase에 `documents` 포함 |
+| POST | `/api/phases` | JWT / agent token | Phase 생성 `{ project_code, name, status? }` |
+| PUT | `/api/phases/:id` | JWT / agent token | Phase 수정 `{ name?, status?, sort_order? }` |
+| DELETE | `/api/phases/:id` | JWT / agent token | Phase 삭제 |
+| GET | `/api/phases/:id/documents` | JWT / agent token | Phase 문서 목록 |
+| POST | `/api/phases/:id/documents` | JWT / agent token | 문서 등록 `{ title, doc_path, status?, agent_id? }` |
+| PUT | `/api/phase-documents/:id` | JWT / agent token | 문서 수정 `{ title?, doc_path?, status? }` |
+| DELETE | `/api/phase-documents/:id` | JWT / agent token | 문서 삭제 |
+
+- `status`: `active` | `draft` | `done` | `deprecated` (기본 `draft`, 범위 밖 400)
+- 문서 등록 시 `agent_id`를 생략하면 agent token일 경우 그 토큰의 에이전트로 자동 지정
+  (JWT 호출이면 `agent_id` 필수, 없으면 400)
+- 같은 phase에 동일 문서 중복 등록 시 409
+
 ### 3. WebSocket 프로토콜
 
 #### Client → Server
