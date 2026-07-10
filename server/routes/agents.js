@@ -1,12 +1,48 @@
 import { execSync } from 'child_process';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { getTmuxSessions } from '../lib/tmux.js';
 import { processStatusChange } from '../lib/status-subscriptions.js';
 import { deliverMessages } from '../lib/agent-talk.js';
+import { getIntSetting, DEFAULT_MAX_AGENTS_PER_FOLDER } from '../lib/settings.js';
 
 
 export default async function agentRoutes(app) {
   const { db } = app;
+
+  // Shared agent-creation logic (used by POST /api/agents and POST /api/agents/spawn).
+  // Creates a tmux session in `folder` (when no explicit session is given), inserts the
+  // agent row, and injects KRATOS_TOKEN/PORT into the session. Returns the agent row.
+  const createAgentInFolder = ({ name, tmux_session, folder, nickname = null }) => {
+    let sessionName = tmux_session;
+    if (folder && !tmux_session) {
+      sessionName = `kratos-${Date.now().toString(36)}`;
+      try {
+        execSync(`tmux new-session -d -s ${sessionName} -c ${folder}`, {
+          encoding: 'utf8', timeout: 5000,
+          env: { ...process.env, PORT: '', CLIENT_PORT: '' },
+        });
+      } catch {
+        // Session might already exist, that's ok — we'll just register it
+      }
+    }
+    if (!sessionName) throw new Error('tmux_session or folder required');
+
+    const agentToken = crypto.randomUUID();
+    const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM agents').get()?.m || 0;
+    const port = process.env.PORT || 15001;
+    const result = db.prepare(
+      'INSERT INTO agents (name, tmux_session, token, sort_order, folder, nickname) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(name, sessionName, agentToken, maxOrder + 1, folder || null, nickname);
+
+    try {
+      execSync(`tmux set-environment -t ${sessionName} KRATOS_TOKEN ${agentToken}`, { timeout: 3000 });
+      execSync(`tmux set-environment -t ${sessionName} KRATOS_PORT ${port}`, { timeout: 3000 });
+    } catch {}
+
+    return db.prepare('SELECT * FROM agents WHERE id = ?').get(result.lastInsertRowid);
+  };
 
   const authenticate = async (request, reply) => {
     const authHeader = request.headers.authorization;
@@ -52,45 +88,18 @@ export default async function agentRoutes(app) {
       return reply.code(400).send({ error: 'name is required' });
     }
 
-    let sessionName = tmux_session;
-
-    // "from folder" flow: create a tmux session in that folder
-    if (folder && !tmux_session) {
-      sessionName = `kratos-${Date.now().toString(36)}`;
-      try {
-        execSync(`tmux new-session -d -s ${sessionName} -c ${folder}`, {
-          encoding: 'utf8', timeout: 5000,
-          env: { ...process.env, PORT: '', CLIENT_PORT: '' },
-        });
-      } catch {
-        // Session might already exist, that's ok — we'll just register it
-      }
-    }
-
-    if (!sessionName) {
+    if (!tmux_session && !folder) {
       return reply.code(400).send({ error: 'tmux_session or folder required' });
     }
 
     try {
-      const agentToken = crypto.randomUUID();
-      const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM agents').get()?.m || 0;
-      const port = process.env.PORT || 15001;
-      const result = db.prepare(
-        'INSERT INTO agents (name, tmux_session, token, sort_order, folder) VALUES (?, ?, ?, ?, ?)'
-      ).run(name, sessionName, agentToken, maxOrder + 1, folder || null);
-
-      // Auto-set KRATOS_TOKEN/PORT in tmux session
-      try {
-        execSync(`tmux set-environment -t ${sessionName} KRATOS_TOKEN ${agentToken}`, { timeout: 3000 });
-        execSync(`tmux set-environment -t ${sessionName} KRATOS_PORT ${port}`, { timeout: 3000 });
-      } catch {}
-
+      const agent = createAgentInFolder({ name, tmux_session, folder });
       return {
-        id: result.lastInsertRowid,
-        name,
-        tmux_session: sessionName,
-        type: 'unmanaged',
-        token: agentToken,
+        id: agent.id,
+        name: agent.name,
+        tmux_session: agent.tmux_session,
+        type: agent.type,
+        token: agent.token,
       };
     } catch {
       return reply.code(409).send({ error: 'tmux_session already exists' });
@@ -142,6 +151,56 @@ export default async function agentRoutes(app) {
     const value = nickname === '' ? null : nickname;
     db.prepare('UPDATE agents SET nickname = ? WHERE id = ?').run(value, id);
     return { ok: true, id: Number(id), nickname: value };
+  });
+
+  // Manager agent spawns a new agent session in a folder. Auth: agent token whose
+  // owner has is_manager=1. Enforces a per-folder cap (app setting). Managers can
+  // CREATE but not DELETE (DELETE requires a dashboard JWT, unreachable by tokens).
+  app.post('/api/agents/spawn', async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return reply.code(401).send({ error: 'Unauthorized' });
+
+    const caller = db.prepare('SELECT * FROM agents WHERE token = ?').get(token);
+    if (!caller) return reply.code(401).send({ error: 'Unauthorized' });
+    if (caller.is_manager !== 1) return reply.code(403).send({ error: 'Manager agents only' });
+
+    const body = request.body || {};
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    if (!name) return reply.code(400).send({ error: 'name is required' });
+
+    if (typeof body.folder !== 'string' || !body.folder.trim()) {
+      return reply.code(400).send({ error: 'folder is required' });
+    }
+    const folder = path.resolve(body.folder.trim());
+    try {
+      if (!fs.statSync(folder).isDirectory()) throw new Error('not a dir');
+    } catch {
+      return reply.code(400).send({ error: 'folder must be an existing directory' });
+    }
+
+    let nickname = body.nickname;
+    if (nickname === null || nickname === undefined) nickname = '';
+    if (typeof nickname !== 'string') return reply.code(400).send({ error: 'nickname must be a string' });
+    nickname = nickname.trim();
+    if (nickname.length > 10) return reply.code(400).send({ error: 'nickname must be 10 characters or fewer' });
+
+    // Per-folder cap: count all agents registered to this folder (dead sessions included).
+    const cap = getIntSetting(db, 'max_agents_per_folder', DEFAULT_MAX_AGENTS_PER_FOLDER);
+    const count = db.prepare('SELECT COUNT(*) AS c FROM agents WHERE folder = ?').get(folder).c;
+    if (count >= cap) {
+      return reply.code(409).send({ error: 'too many agent for the folder' });
+    }
+
+    try {
+      const agent = createAgentInFolder({ name, folder, nickname: nickname || null });
+      return reply.code(201).send(agent);
+    } catch (err) {
+      if (String(err?.message || '').includes('UNIQUE')) {
+        return reply.code(409).send({ error: 'name already exists' });
+      }
+      return reply.code(500).send({ error: 'Failed to create agent' });
+    }
   });
 
   app.put('/api/agents/:id/order', { preHandler: authenticate }, async (request, reply) => {

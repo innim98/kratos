@@ -31,9 +31,27 @@ export default function Settings() {
   const [ptyStats, setPtyStats] = useState(null);
   const [ptyMsg, setPtyMsg] = useState('');
 
+  const [maxAgents, setMaxAgents] = useState('');
+  const [settingsMsg, setSettingsMsg] = useState('');
+  const [settingsErr, setSettingsErr] = useState('');
+
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => { if (isAdmin) loadUsers(); }, [isAdmin]);
+
+  useEffect(() => {
+    apiFetch('/api/settings').then(r => r.json())
+      .then(d => { if (d && d.max_agents_per_folder != null) setMaxAgents(String(d.max_agents_per_folder)); })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveAgentLimit = async (e) => {
+    e.preventDefault(); setSettingsMsg(''); setSettingsErr('');
+    const res = await apiFetch('/api/settings', { method: 'PUT', body: { max_agents_per_folder: Number(maxAgents) } });
+    const data = await res.json();
+    if (res.ok) { setMaxAgents(String(data.max_agents_per_folder)); setSettingsMsg('Saved'); }
+    else { setSettingsErr(data.error || 'Failed'); }
+  };
 
   const loadProjects = () => {
     apiFetch('/api/projects').then(r => r.json()).then(d => { if (Array.isArray(d)) setProjects(d); });
@@ -198,6 +216,22 @@ export default function Settings() {
 
           {projMsg && <p className="text-sm text-emerald-500">{projMsg}</p>}
           {projErr && <p className="text-sm text-destructive">{projErr}</p>}
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="rounded-lg border border-border bg-card p-5 space-y-4">
+          <h3 className="font-medium">Agent Limits</h3>
+          <form onSubmit={handleSaveAgentLimit} className="flex items-end gap-3 flex-wrap">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Max agents per folder</label>
+              <Input type="number" min="1" value={maxAgents} onChange={e => setMaxAgents(e.target.value)} className="w-28" />
+            </div>
+            <Button type="submit" size="sm">Save</Button>
+          </form>
+          <p className="text-xs text-muted-foreground">Maximum agents a manager can spawn per folder (default 4).</p>
+          {settingsMsg && <p className="text-sm text-emerald-500">{settingsMsg}</p>}
+          {settingsErr && <p className="text-sm text-destructive">{settingsErr}</p>}
         </section>
       )}
 

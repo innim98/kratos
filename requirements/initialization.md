@@ -352,9 +352,12 @@ admin만 다른 사용자를 추가/삭제할 수 있다.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/agents` | JWT | 등록된 에이전트 목록 + tmux 상태 + webview 상태 |
+| GET | `/api/agents` | JWT | 등록된 에이전트 목록 + tmux 상태 + webview 상태 (`is_manager`, `nickname` 포함) |
 | POST | `/api/agents` | JWT | 에이전트 등록 `{ name, tmux_session }` |
+| PUT | `/api/agents/:id` | JWT | 부분 업데이트 `{ name?, issue_project?, is_manager? }` |
 | DELETE | `/api/agents/:id` | JWT | 에이전트 등록 해제 (tmux 세션은 건드리지 않음) |
+| PUT | `/api/agents/:id/nickname` | agent token (매니저) | 닉네임 지정/해제 `{ nickname }` (≤10자) |
+| POST | `/api/agents/spawn` | agent token (매니저) | 폴더에 새 에이전트 생성 `{ folder, name, nickname? }` → 201 또는 409 `too many agent for the folder` |
 | POST | `/api/agents/:id/webview` | localhost only | 웹뷰 등록 `{ port, path }` |
 | DELETE | `/api/agents/:id/webview` | localhost only | 웹뷰 해제 |
 | GET | `/api/agents/:id/webview/proxy/*` | JWT | Local 모드 — 프록시 |
@@ -365,6 +368,27 @@ admin만 다른 사용자를 추가/삭제할 수 있다.
 - 웹뷰 프록시 (Local): JWT 인증, 브라우저 iframe에서 호출
 - Shared Screen WS: JWT 인증, rrweb 이벤트 양방향 (서버→클라이언트: DOM, 클라이언트→서버: 입력)
 - 모든 로그인 유저가 동일한 에이전트 목록을 본다
+
+#### 2.1 매니저 에이전트 (phase-11 / phase-12)
+
+- **매니저 지정**: 대시보드 사용자가 Agents 목록의 "M" 버튼으로 토글(`is_manager`). 사람만 지정 가능.
+- **닉네임**: 매니저 에이전트가 `PUT /api/agents/:id/nickname`(자기 토큰)로 임의 에이전트에 최대 10자
+  라벨 부여. UI에서 agent name 우측에 약한 색으로 표시. 빈 문자열→해제. 11자↑ → 400.
+- **에이전트 생성**: 매니저는 `POST /api/agents/spawn`으로 폴더 경로·이름·별명을 주면 tmux 세션을
+  즉시 생성하고 토큰까지 반환. 폴더당 상한(전역 설정 `max_agents_per_folder`, 기본 4)을 넘으면
+  409 `too many agent for the folder`. 상한은 그 폴더에 등록된 전체 에이전트(죽은 세션 포함)를 센다.
+- **권한 경계**: 매니저는 **생성만 가능, 삭제 불가**. `DELETE /api/agents/:id`는 JWT 전용이라
+  agent token으로는 호출 불가.
+- `GET /api/agents/me` 응답에 `is_manager` 포함(에이전트가 매니저 여부 자체 확인).
+
+### 2.5 설정 API (app_settings)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/settings` | JWT | 전역 설정 조회 `{ max_agents_per_folder }` |
+| PUT | `/api/settings` | JWT(admin) | 전역 설정 변경 `{ max_agents_per_folder }` (≥1 정수) |
+
+- `max_agents_per_folder`: 매니저가 폴더당 생성 가능한 에이전트 상한. 기본 4. Settings 화면(admin)에서 변경.
 
 ### 3. WebSocket 프로토콜
 

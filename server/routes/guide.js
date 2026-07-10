@@ -244,6 +244,20 @@ curl -s -X PUT http://localhost:${port}/api/agents/<TARGET_ID>/nickname ${authHe
 #
 # 주의: 매니저가 아니면 403. 매니저 지정은 대시보드 사용자가 Agents 목록의 "M" 버튼으로만 가능.
 #       10자 초과 시 400(잘리지 않음). 닉네임은 UI에서 agent name 우측에 표시됩니다.
+
+# ═══════════════════════════════════════════
+# AGENT SPAWN (매니저 전용)
+# ═══════════════════════════════════════════
+# 매니저만 사용할 수 있습니다(내가 매니저인지: GET /api/agents/me 의 is_manager).
+# 폴더 경로·이름·별명을 주면 새 에이전트 세션을 즉시 만들어 토큰까지 돌려줍니다.
+curl -s -X POST http://localhost:${port}/api/agents/spawn ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"folder": "/abs/path/to/repo", "name": "worker-1", "nickname": "reviewer"}'
+#   성공 → 201 { "id":.., "name":"worker-1", "tmux_session":"kratos-..", "token":"..", .. }
+#   초과 → 409 { "error": "too many agent for the folder" }   (폴더당 상한 도달)
+#
+# 주의: 생성만 가능하고 삭제는 불가합니다(삭제는 대시보드 사용자만).
+#       폴더당 상한은 전체 설정에서 조정(기본 4). 상한은 그 폴더의 죽은 세션도 포함해 셉니다.
 `;
 
     reply.header('content-type', 'text/plain');
