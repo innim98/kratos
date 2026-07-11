@@ -14,7 +14,7 @@ export default async function agentRoutes(app) {
   // Shared agent-creation logic (used by POST /api/agents and POST /api/agents/spawn).
   // Creates a tmux session in `folder` (when no explicit session is given), inserts the
   // agent row, and injects KRATOS_TOKEN/PORT into the session. Returns the agent row.
-  const createAgentInFolder = ({ name, tmux_session, folder, nickname = null }) => {
+  const createAgentInFolder = ({ name, tmux_session, folder, nickname = null, session_uuid = null }) => {
     let sessionName = tmux_session;
     if (folder && !tmux_session) {
       sessionName = `kratos-${Date.now().toString(36)}`;
@@ -33,8 +33,8 @@ export default async function agentRoutes(app) {
     const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM agents').get()?.m || 0;
     const port = process.env.PORT || 15001;
     const result = db.prepare(
-      'INSERT INTO agents (name, tmux_session, token, sort_order, folder, nickname) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(name, sessionName, agentToken, maxOrder + 1, folder || null, nickname);
+      'INSERT INTO agents (name, tmux_session, token, sort_order, folder, nickname, session_uuid) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(name, sessionName, agentToken, maxOrder + 1, folder || null, nickname, session_uuid || null);
 
     try {
       execSync(`tmux set-environment -t ${sessionName} KRATOS_TOKEN ${agentToken}`, { timeout: 3000 });
@@ -82,7 +82,7 @@ export default async function agentRoutes(app) {
   });
 
   app.post('/api/agents', { preHandler: authenticate }, async (request, reply) => {
-    const { name, tmux_session, folder } = request.body || {};
+    const { name, tmux_session, folder, session_uuid } = request.body || {};
 
     if (!name) {
       return reply.code(400).send({ error: 'name is required' });
@@ -93,7 +93,7 @@ export default async function agentRoutes(app) {
     }
 
     try {
-      const agent = createAgentInFolder({ name, tmux_session, folder });
+      const agent = createAgentInFolder({ name, tmux_session, folder, session_uuid });
       return {
         id: agent.id,
         name: agent.name,
@@ -101,7 +101,10 @@ export default async function agentRoutes(app) {
         type: agent.type,
         token: agent.token,
       };
-    } catch {
+    } catch (err) {
+      if (String(err?.message || '').includes('session_uuid')) {
+        return reply.code(409).send({ error: 'session_uuid already assigned' });
+      }
       return reply.code(409).send({ error: 'tmux_session already exists' });
     }
   });
@@ -153,6 +156,40 @@ export default async function agentRoutes(app) {
     return { ok: true, id: Number(id), nickname: value };
   });
 
+  // Manager agent attaches/detaches a Claude Code session UUID on an agent, used to
+  // address messages by session (phase-13). Auth: agent token with is_manager=1.
+  // NOTE: this value is set ONLY by a manager agent; Kratos does not verify that the
+  // UUID corresponds to a real/live Claude Code session — it is caller-asserted.
+  app.put('/api/agents/:id/session-uuid', async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return reply.code(401).send({ error: 'Unauthorized' });
+
+    const caller = db.prepare('SELECT * FROM agents WHERE token = ?').get(token);
+    if (!caller) return reply.code(401).send({ error: 'Unauthorized' });
+    if (caller.is_manager !== 1) return reply.code(403).send({ error: 'Manager agents only' });
+
+    const { id } = request.params;
+    const target = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+    if (!target) return reply.code(404).send({ error: 'Agent not found' });
+
+    let { session_uuid } = request.body || {};
+    if (session_uuid === null || session_uuid === undefined) session_uuid = '';
+    if (typeof session_uuid !== 'string') return reply.code(400).send({ error: 'session_uuid must be a string' });
+    session_uuid = session_uuid.trim();
+    const value = session_uuid === '' ? null : session_uuid;
+
+    try {
+      db.prepare('UPDATE agents SET session_uuid = ? WHERE id = ?').run(value, id);
+    } catch (err) {
+      if (String(err?.message || '').includes('UNIQUE')) {
+        return reply.code(409).send({ error: 'session_uuid already assigned' });
+      }
+      throw err;
+    }
+    return { ok: true, id: Number(id), session_uuid: value };
+  });
+
   // Manager agent spawns a new agent session in a folder. Auth: agent token whose
   // owner has is_manager=1. Enforces a per-folder cap (app setting). Managers can
   // CREATE but not DELETE (DELETE requires a dashboard JWT, unreachable by tokens).
@@ -185,6 +222,11 @@ export default async function agentRoutes(app) {
     nickname = nickname.trim();
     if (nickname.length > 10) return reply.code(400).send({ error: 'nickname must be 10 characters or fewer' });
 
+    let sessionUuid = body.session_uuid;
+    if (sessionUuid === null || sessionUuid === undefined) sessionUuid = '';
+    if (typeof sessionUuid !== 'string') return reply.code(400).send({ error: 'session_uuid must be a string' });
+    sessionUuid = sessionUuid.trim();
+
     // Per-folder cap: count all agents registered to this folder (dead sessions included).
     const cap = getIntSetting(db, 'max_agents_per_folder', DEFAULT_MAX_AGENTS_PER_FOLDER);
     const count = db.prepare('SELECT COUNT(*) AS c FROM agents WHERE folder = ?').get(folder).c;
@@ -193,10 +235,14 @@ export default async function agentRoutes(app) {
     }
 
     try {
-      const agent = createAgentInFolder({ name, folder, nickname: nickname || null });
+      const agent = createAgentInFolder({ name, folder, nickname: nickname || null, session_uuid: sessionUuid || null });
       return reply.code(201).send(agent);
     } catch (err) {
-      if (String(err?.message || '').includes('UNIQUE')) {
+      const msg = String(err?.message || '');
+      if (msg.includes('session_uuid')) {
+        return reply.code(409).send({ error: 'session_uuid already assigned' });
+      }
+      if (msg.includes('UNIQUE')) {
         return reply.code(409).send({ error: 'name already exists' });
       }
       return reply.code(500).send({ error: 'Failed to create agent' });

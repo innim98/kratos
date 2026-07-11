@@ -357,7 +357,8 @@ admin만 다른 사용자를 추가/삭제할 수 있다.
 | PUT | `/api/agents/:id` | JWT | 부분 업데이트 `{ name?, issue_project?, is_manager? }` |
 | DELETE | `/api/agents/:id` | JWT | 에이전트 등록 해제 (tmux 세션은 건드리지 않음) |
 | PUT | `/api/agents/:id/nickname` | agent token (매니저) | 닉네임 지정/해제 `{ nickname }` (≤10자) |
-| POST | `/api/agents/spawn` | agent token (매니저) | 폴더에 새 에이전트 생성 `{ folder, name, nickname? }` → 201 또는 409 `too many agent for the folder` |
+| PUT | `/api/agents/:id/session-uuid` | agent token (매니저) | Claude Code 세션 uuid 지정/해제 `{ session_uuid }` (빈값→해제, 중복→409) |
+| POST | `/api/agents/spawn` | agent token (매니저) | 폴더에 새 에이전트 생성 `{ folder, name, nickname?, session_uuid? }` → 201 또는 409 `too many agent for the folder` |
 | POST | `/api/agents/:id/webview` | localhost only | 웹뷰 등록 `{ port, path }` |
 | DELETE | `/api/agents/:id/webview` | localhost only | 웹뷰 해제 |
 | GET | `/api/agents/:id/webview/proxy/*` | JWT | Local 모드 — 프록시 |
@@ -380,6 +381,11 @@ admin만 다른 사용자를 추가/삭제할 수 있다.
 - **권한 경계**: 매니저는 **생성만 가능, 삭제 불가**. `DELETE /api/agents/:id`는 JWT 전용이라
   agent token으로는 호출 불가.
 - `GET /api/agents/me` 응답에 `is_manager` 포함(에이전트가 매니저 여부 자체 확인).
+- **세션 uuid로 메시지 보내기 (phase-13)**: 매니저가 에이전트에 Claude Code 세션 uuid를 붙여두면,
+  발신 에이전트가 `POST /api/messages`에 `{ to_session, body }`로 수신 대상을 지정할 수 있다
+  (기존 `{ to, body }`의 대안). uuid가 매칭되는 에이전트가 없거나 그 tmux 세션이 죽어있으면
+  409 `no active session`. **이 `session_uuid` 값은 매니저 에이전트만 지정/제거하며, Kratos는
+  그 값의 신뢰성(실제 Claude Code 세션과의 대응 여부)을 보장하지 않는다** — 단순 조회 키로만 취급.
 
 ### 2.5 설정 API (app_settings)
 

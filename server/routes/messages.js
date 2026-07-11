@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { deliverMessages } from '../lib/agent-talk.js';
+import { getTmuxSessions } from '../lib/tmux.js';
 
 export default async function messageRoutes(app) {
   const { db } = app;
@@ -15,13 +16,13 @@ export default async function messageRoutes(app) {
   app.get('/api/agents/me', async (request, reply) => {
     const me = authAgent(request);
     if (!me) return reply.code(401).send({ error: 'Unauthorized' });
-    return { id: me.id, name: me.name, is_manager: me.is_manager };
+    return { id: me.id, name: me.name, is_manager: me.is_manager, session_uuid: me.session_uuid };
   });
 
   // Directory of all agents (id + name) so agents can address each other.
   app.get('/api/agents/directory', async (request, reply) => {
     if (!authAgent(request)) return reply.code(401).send({ error: 'Unauthorized' });
-    return db.prepare('SELECT id, name FROM agents ORDER BY id').all();
+    return db.prepare('SELECT id, name, session_uuid FROM agents ORDER BY id').all();
   });
 
   // Send a message — Kratos stores it under the sender's identity (no forgery).
@@ -29,17 +30,31 @@ export default async function messageRoutes(app) {
     const sender = authAgent(request);
     if (!sender) return reply.code(401).send({ error: 'Unauthorized' });
 
-    const { to, body } = request.body || {};
-    const receiverId = parseInt(to, 10);
-    if (!Number.isInteger(receiverId)) return reply.code(400).send({ error: 'to (receiver id) is required' });
+    const { to, to_session, body } = request.body || {};
     if (typeof body !== 'string' || !body.trim()) return reply.code(400).send({ error: 'body is required' });
 
-    const receiver = db.prepare('SELECT * FROM agents WHERE id = ?').get(receiverId);
-    if (!receiver) return reply.code(404).send({ error: 'Receiver not found' });
+    // Resolve the receiver either by agent id (`to`) or by Claude Code session
+    // UUID (`to_session`). The session UUID is a manager-asserted value; Kratos
+    // does not guarantee its authenticity, so we only treat it as a lookup key.
+    let receiver;
+    if (to !== undefined && to !== null && to !== '') {
+      const receiverId = parseInt(to, 10);
+      if (!Number.isInteger(receiverId)) return reply.code(400).send({ error: 'to (receiver id) is invalid' });
+      receiver = db.prepare('SELECT * FROM agents WHERE id = ?').get(receiverId);
+      if (!receiver) return reply.code(404).send({ error: 'Receiver not found' });
+    } else if (typeof to_session === 'string' && to_session.trim()) {
+      receiver = db.prepare('SELECT * FROM agents WHERE session_uuid = ?').get(to_session.trim());
+      // No agent owns this UUID, or its tmux session is not live → no active session.
+      if (!receiver || !getTmuxSessions().has(receiver.tmux_session)) {
+        return reply.code(409).send({ error: 'no active session' });
+      }
+    } else {
+      return reply.code(400).send({ error: 'to or to_session is required' });
+    }
 
     const id = crypto.randomUUID();
     db.prepare('INSERT INTO agent_messages (id, sender_id, receiver_id, body) VALUES (?, ?, ?, ?)')
-      .run(id, sender.id, receiverId, body);
+      .run(id, sender.id, receiver.id, body);
 
     // Deliver immediately if the receiver is idle right now; otherwise it waits
     // for the receiver's next idle report (handled in the status endpoint).

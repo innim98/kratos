@@ -233,6 +233,15 @@ curl -s -X PUT http://localhost:${port}/api/messages/read ${authHeader} \\
 # 수신 옵트인 해제:
 curl -X DELETE http://localhost:${port}/api/messages/subscribe ${authHeader}
 
+# ── 세션 UUID로 보내기 (agent-id 대신 Claude Code 세션 uuid로 목적지 지정) ──
+curl -s -X POST http://localhost:${port}/api/messages ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d "$(jq -n --arg s "<SESSION_UUID>" --arg b "리뷰 부탁해요" '{to_session:\$s, body:\$b}')"
+#   성공 → { "ok": true, "message_id": "<uuid>" }
+#   해당 uuid의 활성(=tmux 세션 살아있는) 에이전트가 없으면 → 409 { "error": "no active session" }
+#   ※ 세션 uuid는 매니저 에이전트만 지정/제거하며, Kratos는 그 값의 신뢰성(실제 세션 대응 여부)을
+#     보장하지 않습니다. 단순 조회 키로만 취급합니다.
+
 # ═══════════════════════════════════════════
 # AGENT NICKNAME (매니저 전용)
 # ═══════════════════════════════════════════
@@ -251,6 +260,12 @@ curl -s -X PUT http://localhost:${port}/api/agents/<TARGET_ID>/nickname ${authHe
 #
 # 주의: 매니저가 아니면 403. 매니저 지정은 대시보드 사용자가 Agents 목록의 "M" 버튼으로만 가능.
 #       10자 초과 시 400(잘리지 않음). 닉네임은 UI에서 agent name 우측에 표시됩니다.
+
+# 세션 UUID 지정/해제 — 에이전트에 Claude Code 세션 uuid를 붙여 'to_session'으로 수신 대상 지정 가능.
+curl -s -X PUT http://localhost:${port}/api/agents/<TARGET_ID>/session-uuid ${authHeader} \\
+  -H "Content-Type: application/json" -d '{"session_uuid": "<uuid>"}'
+#   해제: -d '{"session_uuid": ""}'   /   중복 uuid → 409
+#   ※ 이 값은 매니저 에이전트만 수정하며, Kratos는 그 값의 신뢰성(실제 세션과의 대응)을 보장하지 않습니다.
 
 # ═══════════════════════════════════════════
 # AGENT SPAWN (매니저 전용)
