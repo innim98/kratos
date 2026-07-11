@@ -211,7 +211,8 @@ mkdir -p scripts && curl -s http://localhost:${port}/api/agents/msg-script -o sc
 #   bash scripts/kratos-msg.sh send <to-id> "본문"     # 전송
 #   bash scripts/kratos-msg.sh read <from-id>         # 미읽음 출력 + 읽음 처리
 
-# ── 상대 찾기 (전체 에이전트 id/name) ──
+# ── 상대 찾기 (전체 에이전트 id/name/session_uuid) ──
+#   각 항목은 { id, name, session_uuid } — id로 보내려면 to, session uuid로 보내려면 to_session 사용.
 curl -s http://localhost:${port}/api/agents/directory ${authHeader} | jq
 
 # ── 직접 호출 (스크립트 없이) ──
