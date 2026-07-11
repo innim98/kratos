@@ -119,6 +119,13 @@ curl -X POST http://localhost:${port}/api/agents/${id}/voice/speak \\
 # List phases
 curl -s "http://localhost:${port}/api/phases?project_code=<CODE>" ${authHeader} | jq
 
+# Create a phase (status: active/draft/done/deprecated, default draft)
+curl -X POST http://localhost:${port}/api/phases \\
+  ${authHeader} \\
+  -H "Content-Type: application/json" \\
+  -d '{"project_code": "<CODE>", "name": "Phase 1: Auth", "status": "draft"}'
+#   → 생성된 phase (id 포함). 이 id 로 아래 문서 등록.
+
 # Register a document to a phase (status: active/draft/done/deprecated)
 curl -X POST http://localhost:${port}/api/phases/<PHASE_ID>/documents \\
   ${authHeader} \\
