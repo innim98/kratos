@@ -69,7 +69,7 @@ function loadDraft(agentId) {
   return localStorage.getItem(`kratos_input_draft_${agentId}`) || '';
 }
 
-const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
+const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }, ref) {
   const containerRef = useRef(null);
   const termRef = useRef(null);
   const wsRef = useRef(null);
@@ -223,6 +223,10 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
     // Snapshot only: capture the terminal text at entry, no auto-refresh.
     loadTextContent();
   };
+
+  // When the parent owns a Terminal/Text tab (AgentDetail), the TXT strip should
+  // switch that top tab to "Text" instead of using the in-panel text overlay.
+  const goText = () => { if (onEnterText) onEnterText(); else enterTextMode(); };
 
   const exitTextMode = () => {
     setTextMode(false);
@@ -449,14 +453,14 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId }, ref) {
           <div
             className="absolute top-0 right-0 w-[40px] h-full flex items-center justify-center z-10 touch-none"
             style={{ background: 'rgba(255,255,255,0.05)' }}
-            onClick={(e) => { e.stopPropagation(); enterTextMode(); }}
+            onClick={(e) => { e.stopPropagation(); goText(); }}
             onTouchStart={(e) => {
               dragStartYRef.current = e.touches[0].clientY;
             }}
             onTouchMove={(e) => {
               if (dragStartYRef.current == null) return;
               if (!textMode && Math.abs(e.touches[0].clientY - dragStartYRef.current) > 10) {
-                enterTextMode();
+                goText();
               }
               if (textRef.current) {
                 const el = e.currentTarget;
