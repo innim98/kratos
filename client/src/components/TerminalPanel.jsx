@@ -312,10 +312,20 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(containerRef.current);
-    fit.fit();
 
     termRef.current = term;
     fitRef.current = fit;
+
+    // Fit only when the container actually has a size. xterm throws
+    // "Cannot read properties of undefined (reading 'dimensions')" if fit()
+    // runs while the container is 0×0 (common on mobile during initial layout
+    // or when the panel mounts briefly hidden), which leaves the renderer
+    // uninitialized and the terminal permanently blank. Never let fit throw.
+    const safeFit = () => {
+      const el = containerRef.current;
+      if (!el || el.clientWidth === 0 || el.clientHeight === 0) return false;
+      try { fit.fit(); return true; } catch { return false; }
+    };
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = getToken();
@@ -368,7 +378,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
     });
 
     const handleResize = () => {
-      fit.fit();
+      if (!safeFit()) return;
       if (ws.readyState === WebSocket.OPEN) {
         const { cols, rows } = term;
         ws.send(JSON.stringify({ type: 'resize', cols, rows }));
@@ -378,7 +388,20 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(containerRef.current);
 
+    // Initial fit, deferred past layout and retried for up to ~1s until the
+    // container has a real size — otherwise the very first fit can no-op and
+    // the terminal stays blank until an unrelated resize happens.
+    let rafId = 0;
+    let fitTries = 0;
+    const initialFit = () => {
+      const el = containerRef.current;
+      if (el && el.clientWidth > 0 && el.clientHeight > 0) { handleResize(); return; }
+      if (fitTries++ < 60) rafId = requestAnimationFrame(initialFit);
+    };
+    rafId = requestAnimationFrame(initialFit);
+
     return () => {
+      cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       try {
         if (ws.readyState === WebSocket.OPEN) {
