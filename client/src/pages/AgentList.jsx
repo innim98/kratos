@@ -5,7 +5,8 @@ import { Badge } from '../components/ui/badge.jsx';
 import { cn } from '../lib/utils.js';
 import FolderPickerDialog from '../components/FolderPickerDialog.jsx';
 import TmuxPickerDialog from '../components/TmuxPickerDialog.jsx';
-import { FolderPlus, Terminal, Trash2, List, LayoutGrid } from 'lucide-react';
+import { FolderPlus, Terminal, Trash2, List, LayoutGrid, ClipboardList } from 'lucide-react';
+import { getLogText, clearLogs, getLogCount } from '../lib/logbuffer.js';
 
 const VIEW_MODES = [
   { key: 'list', icon: List, label: 'List' },
@@ -17,6 +18,29 @@ export default function AgentList({ onSelectAgent }) {
   const [folderOpen, setFolderOpen] = useState(false);
   const [tmuxOpen, setTmuxOpen] = useState(false);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('kratos_agents_view') || 'list');
+  const [logMsg, setLogMsg] = useState('');
+
+  // Export captured console/error logs for on-device debugging: copy to clipboard
+  // (works on secure/localhost contexts) and always download a .txt as a fallback.
+  const handleExportLogs = async () => {
+    const text = getLogText();
+    let copied = false;
+    try {
+      if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); copied = true; }
+    } catch {}
+    try {
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kratos-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {}
+    setLogMsg(`${getLogCount()} lines — ${copied ? 'copied + downloaded' : 'downloaded'}`);
+    setTimeout(() => setLogMsg(''), 4000);
+  };
 
   const loadAgents = () => {
     apiFetch('/api/agents').then(r => r.json())
@@ -75,6 +99,9 @@ export default function AgentList({ onSelectAgent }) {
               </Button>
             ))}
           </div>
+          <Button size="sm" variant="outline" onClick={handleExportLogs} title="Copy/download captured console logs">
+            <ClipboardList className="h-4 w-4 mr-1.5" /> Logs
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setFolderOpen(true)}>
             <FolderPlus className="h-4 w-4 mr-1.5" /> from folder
           </Button>
@@ -83,6 +110,7 @@ export default function AgentList({ onSelectAgent }) {
           </Button>
         </div>
       </div>
+      {logMsg && <p className="mb-3 text-xs text-emerald-500">{logMsg}</p>}
 
       {viewMode === 'list' && (
         <div className="space-y-2">

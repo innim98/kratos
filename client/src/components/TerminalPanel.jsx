@@ -316,6 +316,9 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
     termRef.current = term;
     fitRef.current = fit;
 
+    const _el0 = containerRef.current;
+    console.log(`[term] mount agent=${agentId} container=${_el0?.clientWidth}x${_el0?.clientHeight}`);
+
     // Fit only when the container actually has a size. xterm throws
     // "Cannot read properties of undefined (reading 'dimensions')" if fit()
     // runs while the container is 0×0 (common on mobile during initial layout
@@ -334,8 +337,10 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
 
     ws.onopen = () => {
       const { cols, rows } = term;
+      console.log(`[term] ws open agent=${agentId} attach ${cols}x${rows}`);
       ws.send(JSON.stringify({ type: 'attach', agentId, cols, rows }));
     };
+    ws.onerror = (e) => { console.warn(`[term] ws error agent=${agentId}`, e?.message || e?.type || e); };
 
     ws.onmessage = (event) => {
       let msg;
@@ -395,8 +400,13 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
     let fitTries = 0;
     const initialFit = () => {
       const el = containerRef.current;
-      if (el && el.clientWidth > 0 && el.clientHeight > 0) { handleResize(); return; }
-      if (fitTries++ < 60) rafId = requestAnimationFrame(initialFit);
+      if (el && el.clientWidth > 0 && el.clientHeight > 0) {
+        handleResize();
+        console.log(`[term] initial fit ok after ${fitTries} tries → ${term.cols}x${term.rows}`);
+        return;
+      }
+      if (fitTries++ < 60) { rafId = requestAnimationFrame(initialFit); return; }
+      console.warn(`[term] container still ${el?.clientWidth}x${el?.clientHeight} after ${fitTries} tries — terminal may render blank`);
     };
     rafId = requestAnimationFrame(initialFit);
 
