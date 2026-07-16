@@ -27,8 +27,8 @@ const LEFT_TABS = ['terminal', 'files', 'text'];
 const RIGHT_TABS = ['files', 'text', 'todos', 'issues'];
 
 
-function renderPanelContent(tab, agentId, termRef, agent, termKey, { onEnterText, onExitText } = {}) {
-  if (tab === 'terminal') return <TerminalPanel key={termKey} ref={termRef} agentId={agentId} onEnterText={onEnterText} />;
+function renderPanelContent(tab, agentId, termRef, agent, termKey, { onEnterText, onExitText, serverPort } = {}) {
+  if (tab === 'terminal') return <TerminalPanel key={termKey} ref={termRef} agentId={agentId} onEnterText={onEnterText} serverPort={serverPort} />;
   if (tab === 'files') return <FilesPanel agentId={agentId} />;
   if (tab === 'text') return <TextPanel agentId={agentId} onBack={onExitText} />;
   if (tab === 'todos') return <TodosPanel agentId={agentId} />;
@@ -190,7 +190,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
     return (
       <div className="flex flex-col h-full">
         <PanelContent tabs={EMBED_TABS} activeTab={mobileTab} onTabChange={setMobileTab} leftAction={backBtn} actions={<><button onClick={() => setTermKey(k => k + 1)} className="flex items-center px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50" title="Reconnect terminal"><RefreshCw className="h-3.5 w-3.5" /></button><UploadForAgent agentId={agentId} onSendToInput={(path) => termRef.current?.insertToInput(path)} /></>}>
-          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey, { onEnterText: () => setMobileTab('text'), onExitText: () => setMobileTab('terminal') })}
+          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey, { onEnterText: () => setMobileTab('text'), onExitText: () => setMobileTab('terminal'), serverPort })}
         </PanelContent>
       </div>
     );
@@ -228,7 +228,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
         </div>
         <AgentStatusDialog agent={agent} open={statusOpen} onOpenChange={setStatusOpen} />
         <PanelContent tabs={MOBILE_TABS} activeTab={mobileTab} onTabChange={setMobileTab} actions={<><button onClick={() => setTermKey(k => k + 1)} className="flex items-center px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50" title="Reconnect terminal"><RefreshCw className="h-3.5 w-3.5" /></button><UploadForAgent agentId={agentId} onSendToInput={(path) => termRef.current?.insertToInput(path)} /></>}>
-          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey, { onEnterText: () => setMobileTab('text'), onExitText: () => setMobileTab('terminal') })}
+          {renderPanelContent(mobileTab, agentId, termRef, agent, termKey, { onEnterText: () => setMobileTab('text'), onExitText: () => setMobileTab('terminal'), serverPort })}
         </PanelContent>
       </div>
     );
@@ -352,7 +352,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
               </div>
               <div className="flex-1 min-h-0">
                 {ideBottomTab === 'terminal'
-                  ? <TerminalPanel key={termKey} ref={termRef} agentId={agentId} onEnterText={() => setIdeBottomTab('text')} />
+                  ? <TerminalPanel key={termKey} ref={termRef} agentId={agentId} onEnterText={() => setIdeBottomTab('text')} serverPort={serverPort} />
                   : <TextPanel agentId={agentId} onBack={() => setIdeBottomTab('terminal')} />
                 }
               </div>
@@ -368,7 +368,7 @@ export default function AgentDetail({ agentId, onGoBack }) {
 
   const leftPanel = (
     <PanelContent tabs={LEFT_TABS} activeTab={leftTab} onTabChange={setLeftTab} actions={uploadActions}>
-      {renderPanelContent(leftTab, agentId, termRef, agent, termKey, { onEnterText: () => setLeftTab('text'), onExitText: () => setLeftTab('terminal') })}
+      {renderPanelContent(leftTab, agentId, termRef, agent, termKey, { onEnterText: () => setLeftTab('text'), onExitText: () => setLeftTab('terminal'), serverPort })}
     </PanelContent>
   );
 

@@ -69,7 +69,7 @@ function loadDraft(agentId) {
   return localStorage.getItem(`kratos_input_draft_${agentId}`) || '';
 }
 
-const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }, ref) {
+const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText, serverPort }, ref) {
   const containerRef = useRef(null);
   const termRef = useRef(null);
   const wsRef = useRef(null);
@@ -332,7 +332,18 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = getToken();
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/terminal?token=${encodeURIComponent(token)}`);
+    // Connect straight to the backend port when it differs from the page's port
+    // (dev: page on Vite :15000, backend :15001). This bypasses the Vite dev
+    // WebSocket proxy, which drops the terminal upgrade for remote/mobile
+    // clients (e.g. iPhone over Tailscale) even though plain HTTP still works —
+    // the cause of a black terminal while Text mode (HTTP fetch) works fine.
+    // In production (single port) serverPort matches location.port, so this is
+    // identical to using the current host.
+    const wsHost = (serverPort && String(serverPort) !== window.location.port)
+      ? `${window.location.hostname}:${serverPort}`
+      : window.location.host;
+    console.log(`[term] ws connect ${protocol}//${wsHost} (page host ${window.location.host}, serverPort ${serverPort})`);
+    const ws = new WebSocket(`${protocol}//${wsHost}/ws/terminal?token=${encodeURIComponent(token)}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -421,7 +432,7 @@ const TerminalPanel = forwardRef(function TerminalPanel({ agentId, onEnterText }
       } catch {}
       term.dispose();
     };
-  }, [agentId]);
+  }, [agentId, serverPort]);
 
   return (
     <div className="flex flex-col w-full h-full min-h-0">
