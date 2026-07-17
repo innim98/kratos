@@ -417,6 +417,31 @@ admin만 다른 사용자를 추가/삭제할 수 있다.
   (JWT 호출이면 `agent_id` 필수, 없으면 400)
 - 같은 phase에 동일 문서 중복 등록 시 409
 
+### 2.7 MCP 서버 (`mcp/`)
+
+agent-token API를 **MCP 툴**로 노출하는 stdio 서버. 에이전트가 `curl`/`kratos-msg.sh`
+대신 네이티브 툴(`kratos_*`)로 Kratos를 호출한다. HTTP API를 얇게 감싼 래퍼라 API가
+진실의 원천이고, MCP는 이 레포의 세 번째 패키지(`server/`, `client/`, `mcp/`)로 함께 버전 관리.
+
+- **인증**: `KRATOS_TOKEN`/`KRATOS_PORT`를 process env → `tmux show-environment` 순으로 읽어
+  각 에이전트가 자기 자신으로 인증. **설정 파일에 비밀정보 없음**(`kratos-msg.sh`와 동일 모델).
+- **전송**: stdio (에이전트 프로세스마다 1개). Claude Code가 spawn하며 세션 env를 상속.
+- **설치/등록**:
+  ```bash
+  cd mcp && npm install                       # 최초 1회
+  claude mcp add kratos -- node /abs/path/to/kratos/mcp/index.js
+  # 또는 프로젝트 .mcp.json:
+  # { "mcpServers": { "kratos": { "command": "node", "args": ["/abs/path/to/kratos/mcp/index.js"] } } }
+  ```
+  단일 머신에선 절대경로 등록으로 충분(별도 설치·복사 불필요). 다른 머신까지 확장 시 npm 배포로 `npx`.
+- **노출 툴 (agent-token 서브셋)**: `kratos_whoami`, `kratos_directory`, `kratos_report_status`,
+  `kratos_send_message`(to 또는 to_session)/`list_messages`/`mark_read`/`subscribe`/`unsubscribe`,
+  `kratos_list_todos`/`create_todo`/`complete_todo`, `kratos_register_port`,
+  `kratos_list_phases`/`create_phase`/`add_phase_document`,
+  (매니저 전용) `kratos_set_nickname`/`set_session_uuid`/`spawn_agent`.
+  대시보드 JWT 전용 엔드포인트(users/login/settings 등)는 노출하지 않음.
+- API Guide(`GET /api/agents/:id/guide`) 최상단에 등록법이 포함됨.
+
 ### 3. WebSocket 프로토콜
 
 #### Client → Server

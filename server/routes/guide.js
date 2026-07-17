@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MSG_SCRIPT_PATH = join(__dirname, '..', 'templates', 'kratos-msg.sh');
+const MCP_INDEX_PATH = join(__dirname, '..', '..', 'mcp', 'index.js');
 
 export default async function guideRoutes(app) {
   const { db } = app;
@@ -33,6 +34,24 @@ export default async function guideRoutes(app) {
     const guide = `# Kratos API Guide — Agent #${id} (${agent.name})
 # Server: http://localhost:${port}
 # Token: ${token}
+
+# ═══════════════════════════════════════════
+# MCP (권장: curl 대신 네이티브 툴로 호출)
+# ═══════════════════════════════════════════
+# Kratos API를 MCP 툴로 노출합니다. 등록하면 아래 curl들 대신 kratos_* 툴을 씁니다.
+# 토큰/포트는 tmux 세션 env(KRATOS_TOKEN/KRATOS_PORT)에서 자동으로 읽으므로 설정에 비밀정보가 없습니다.
+#
+#   claude mcp add kratos -- node ${MCP_INDEX_PATH}
+#
+# 또는 프로젝트 .mcp.json 에:
+#   { "mcpServers": { "kratos": { "command": "node", "args": ["${MCP_INDEX_PATH}"] } } }
+#
+# 주요 툴: kratos_whoami, kratos_directory, kratos_report_status,
+#   kratos_send_message(to 또는 to_session)/list_messages/mark_read/subscribe,
+#   kratos_list_todos/create_todo/complete_todo, kratos_register_port,
+#   kratos_list_phases/create_phase/add_phase_document,
+#   (매니저) kratos_set_nickname/set_session_uuid/spawn_agent
+# 최초 1회: cd ${dirname(MCP_INDEX_PATH)} && npm install
 
 # ═══════════════════════════════════════════
 # PORT REGISTRATION (register ALL ports)
