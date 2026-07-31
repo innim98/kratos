@@ -79,14 +79,29 @@ export default async function messageRoutes(app) {
       return reply.code(403).send({ error: 'Not a party to this conversation' });
     }
 
+    // Optional filters to keep long conversations readable:
+    //   unread=1  → only messages not yet read
+    //   limit=N   → only the most recent N (after the unread filter)
+    const unreadOnly = request.query.unread === '1' || request.query.unread === 'true';
+    const limitRaw = parseInt(request.query.limit, 10);
+    const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : null;
+
     const rows = db.prepare(
       `SELECT id AS message_id, created_at AS timestamp, body, (read_at IS NOT NULL) AS read
          FROM agent_messages
         WHERE sender_id = ? AND receiver_id = ?
         ORDER BY created_at ASC, rowid ASC`
     ).all(from, to);
-    const all = rows.map((r) => ({ ...r, read: !!r.read }));
-    return { all, unread: all.filter((m) => !m.read) };
+    const full = rows.map((r) => ({ ...r, read: !!r.read }));
+    const total = full.length;
+    const unread_count = full.filter((m) => !m.read).length;
+
+    let list = unreadOnly ? full.filter((m) => !m.read) : full;
+    if (limit && list.length > limit) list = list.slice(list.length - limit); // tail = most recent
+
+    // `all`/`unread` kept for backward compatibility; `total`/`unread_count`/
+    // `returned` let callers page and know what was truncated.
+    return { total, unread_count, returned: list.length, all: list, unread: list.filter((m) => !m.read) };
   });
 
   // Mark messages read (read-only transition; receiver only).

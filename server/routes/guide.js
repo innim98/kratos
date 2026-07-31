@@ -244,7 +244,9 @@ curl -s -X POST http://localhost:${port}/api/messages ${authHeader} \\
 # 수신: 내가 idle 일 때 tmux 로 아래 알림이 도착합니다 (쌓여도 한 번만):
 #   (From Kratos : Kratos sent this at <unix>) message from <sender-id> is received — oldest unread <message-id> @ <unix>
 # 알림을 받으면 대화 목록 조회 (to 생략 시 '나'로 간주, all=전체 / unread=신규):
-curl -s "http://localhost:${port}/api/messages?from=<SENDER_ID>" ${authHeader} | jq
+# 긴 대화는 unread=1(안읽은 것만) 또는 limit=N(최근 N개)으로 줄이세요.
+# 응답: { total, unread_count, returned, all, unread }
+curl -s "http://localhost:${port}/api/messages?from=<SENDER_ID>&unread=1&limit=20" ${authHeader} | jq
 
 # 읽음 처리 (read 단방향):
 curl -s -X PUT http://localhost:${port}/api/messages/read ${authHeader} \\

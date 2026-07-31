@@ -54,11 +54,14 @@ tool('kratos_send_message',
   });
 
 tool('kratos_list_messages',
-  'List a conversation. from = the other agent id; to defaults to me. Returns {all, unread}.',
-  { from: z.number().int(), to: z.number().int().optional() },
-  ({ from, to }) => {
+  'List a conversation. from = the other agent id; to defaults to me. Long threads are capped: set unread_only to skip already-read, and limit for the most recent N (default 20). Returns {total, unread_count, returned, all, unread}.',
+  { from: z.number().int(), to: z.number().int().optional(),
+    unread_only: z.boolean().optional(), limit: z.number().int().min(1).optional() },
+  ({ from, to, unread_only, limit }) => {
     const qs = new URLSearchParams({ from: String(from) });
     if (to !== undefined) qs.set('to', String(to));
+    if (unread_only) qs.set('unread', '1');
+    qs.set('limit', String(limit ?? 20));
     return api('GET', `/api/messages?${qs.toString()}`);
   });
 
